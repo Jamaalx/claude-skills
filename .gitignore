@@ -1,0 +1,19 @@
+# Local fix-kits (these contain real findings from real projects — never commit)
+*-FIXES.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Node / build (if any helpers added later)
+node_modules/
+.next/
+dist/
+build/
+
+# Env
+.env*
+!.env.example

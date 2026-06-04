@@ -1,0 +1,130 @@
+---
+description: "Update all audit skills (security, auth, rls, deps, db-health, seo, perf, a11y, gdpr, uptime) with latest web research, best practices, and framework changes. Run monthly. For structural skill issues (broken MCP refs, overlaps), use /skills-doctor instead."
+allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, Write, Edit]
+---
+
+# AUDIT SKILLS UPDATER
+
+You are updating all Claude Code audit skills to reflect the latest web standards, framework updates, and best practices. This should be run monthly or when major framework updates are released.
+
+This skill REFRESHES audit-skill content (checks, thresholds, references). For structural problems (renamed MCP tools, redundant skills, gaps in coverage), use `/skills-doctor`.
+
+## STEP 1: RESEARCH LATEST CHANGES
+
+Search the web for the latest updates in these areas (use WebSearch for each):
+
+### Security
+- "OWASP Top 10 2026 changes"
+- "Next.js security advisories [current year]"
+- "Supabase security best practices [current year]"
+- "npm supply chain attacks [current year]"
+- "new web security headers [current year]"
+
+### SEO
+- "Google algorithm updates [current year]"
+- "Core Web Vitals changes [current year]"
+- "Google Search Console new features [current year]"
+- "Next.js SEO changes [current year]"
+- "structured data Google updates [current year]"
+- "Google AI overview SEO impact [current year]"
+
+### Performance
+- "Core Web Vitals thresholds [current year]"
+- "Next.js [latest version] performance features"
+- "React [latest version] performance improvements"
+- "new web performance APIs [current year]"
+- "Lighthouse [latest version] scoring changes"
+
+### Uptime/Infrastructure
+- "Railway new features [current year]"
+- "Supabase new features [current year]"
+- "Cloudflare new security features [current year]"
+- "best uptime monitoring tools [current year]"
+
+### Auth & Identity
+- "Supabase Auth / GoTrue breaking changes [current year]"
+- "@supabase/ssr cookie pattern updates"
+- "passkey / WebAuthn adoption [current year]"
+- "OWASP authentication cheat sheet"
+
+### RLS / Database
+- "Supabase RLS best practices [current year]"
+- "Postgres 17 / 18 RLS changes"
+- "supabase_realtime RLS"
+
+### Dependencies / Supply chain
+- "npm supply-chain attacks [current year]"
+- "pip-audit vs safety latest"
+- "knip / depcheck updates"
+
+### Accessibility
+- "WCAG 2.3 status / WCAG 3.0 draft"
+- "European Accessibility Act enforcement [current year]"
+- "axe-core latest rules"
+
+### GDPR / RO
+- "ANSPDCP cookie guidance update [current year]"
+- "EDPB guidelines [current year]"
+- "Legea 506/2004 updates"
+
+## STEP 2: READ CURRENT SKILLS
+
+Read all audit skill files:
+- ~/.claude/commands/security-audit.md
+- ~/.claude/commands/auth-audit.md
+- ~/.claude/commands/rls-audit.md
+- ~/.claude/commands/deps-audit.md
+- ~/.claude/commands/db-health.md
+- ~/.claude/commands/seo-audit.md
+- ~/.claude/commands/perf-audit.md
+- ~/.claude/commands/uptime-check.md
+- ~/.claude/commands/a11y-audit.md
+- ~/.claude/commands/gdpr-audit.md
+- ~/.claude/commands/backup-audit.md
+- ~/.claude/commands/migration-audit.md
+- ~/.claude/commands/dead-code.md
+- ~/.claude/commands/prod-readiness.md
+
+If any file does not exist, note it and skip it in subsequent steps.
+
+## STEP 3: IDENTIFY GAPS
+
+For each skill, compare the current content with the latest research from Step 1:
+- Are there new OWASP categories not covered?
+- Are there new Google ranking factors not checked?
+- Are there new Core Web Vitals metrics or changed thresholds?
+- Are there new framework features that improve security/performance?
+- Are there deprecated checks that should be removed?
+- Are there new tools/packages that should be recommended?
+
+## STEP 4: UPDATE SKILLS
+
+For each gap found, update the relevant skill file:
+- Add new phases or sub-checks
+- Update thresholds and metrics
+- Remove outdated checks
+- Add references to new tools/packages
+- Update version numbers and framework-specific advice
+
+## STEP 5: CHANGELOG
+
+After all updates, output a summary:
+```
+AUDIT SKILLS UPDATE - [date]
+=============================
+
+## security-audit.md
+- [changes made]
+
+## seo-audit.md
+- [changes made]
+
+## perf-audit.md
+- [changes made]
+
+## uptime-check.md
+- [changes made]
+
+## Sources
+- [URLs of key sources used]
+```
