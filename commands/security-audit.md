@@ -78,6 +78,8 @@ Check if `.gitignore` properly excludes sensitive files. Check git history: `git
 
 ## PHASE 4: CODE VULNERABILITY ANALYSIS (OWASP Top 10 + more)
 
+> **OWASP Top 10:2025 mapping** — the checks below are grouped by mechanism, not by the 2025 numbering. Map them to the current edition: A01 Broken Access Control (4d), A02 Security Misconfiguration (now #2 — 4e), **A03 Software Supply Chain Failures** → Phase 15 + `/deps-audit`, A05 Injection (4a), **A10 Mishandling of Exceptional Conditions** (new) → failure-handling covered by `/resilience-audit`. For the API-specific Top 10 see Phase 11 + `/api-security`; for LLM apps see Phase 14 + `/llm-security`.
+
 ### 4a. Injection Attacks
 - **SQL Injection**: Find raw SQL queries, string concatenation in queries, missing parameterization
 - **NoSQL Injection**: Unvalidated MongoDB queries, `$where`, `$regex` from user input
@@ -279,7 +281,7 @@ Use the Supabase MCP tools to check the LIVE project:
    - Unusual query patterns
    - Errors revealing internal info
 
-### 10b. Railway (if `mcp__railway-mcp-server__*` tools available)
+### 10b. Railway (via Railway MCP if connected; else the `railway` CLI — `railway status`, `railway variables`, `railway logs` — or the dashboard)
 
 1. **List projects & services** (`list_projects`, `list_services`)
 
@@ -411,7 +413,7 @@ gh api repos/{owner}/{repo}/hooks
 
 ## PHASE 14: AI / LLM AGENT SECURITY
 
-**Run this phase if the project calls any LLM API, exposes an AI agent/chatbot, does RAG, or defines tools/functions an LLM can call.** This covers OWASP LLM Top 10 (2025) and agentic-specific risks. Highly relevant to projects with assistants (e.g. WhatsApp bots, RAG support agents, multi-agent systems).
+**Run this phase if the project calls any LLM API, exposes an AI agent/chatbot, does RAG, or defines tools/functions an LLM can call.** This covers OWASP LLM Top 10 (2025) and agentic-specific risks. Highly relevant to projects with assistants (e.g. WhatsApp bots, RAG support agents, multi-agent systems). **Deep dive:** `/llm-security`.
 
 ### 14a. Prompt Injection (LLM01)
 - **Direct injection**: can a user message override the system prompt? ("ignore previous instructions", role-play jailbreaks, "you are now DAN")

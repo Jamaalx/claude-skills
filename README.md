@@ -47,7 +47,7 @@ Every audit skill follows the same contract:
 2. **Severity-tagged findings** — CRITICAL / HIGH / MEDIUM / LOW / INFO, with file:line / SQL / config locations.
 3. **Self-contained fix kit** — writes `<DOMAIN>-FIXES.md` to the project root with one copy-paste prompt per finding. A fresh Claude Code session can execute any prompt without context.
 4. **Auto-gitignored** — fix kits contain attack details, never commit. Skills add `*-FIXES.md` to `.gitignore`.
-5. **Optional auto-apply** — pass `fix` as argument (`/auth-audit fix`) to apply remediations in place. Stops on first failure; never pushes commits without confirmation.
+5. **Optional auto-apply** (code-level audits) — pass `fix` as argument (`/auth-audit fix`) to apply remediations in place. Stops on first failure; never pushes commits without confirmation. Infra/advisory skills (`server-hardening`, `attack-surface`, `cost-audit`, `selfhost-updates`, `architecture-review`, `resilience-audit`, `observability-audit`) are **read-only by design** — they produce a plan you action deliberately, never auto-change live infrastructure.
 6. **Self-destruct** — kits end with `rm <kit>.md` instruction once items are checked off.
 
 ## Install

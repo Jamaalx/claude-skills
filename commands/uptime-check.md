@@ -197,7 +197,7 @@ DOMAIN: [domain]
 
 **Goal:** Check Railway deployment health, stability, and configuration.
 
-**IMPORTANT:** Only run this phase if Railway MCP tools are available. Test by calling `list-projects`. If it fails, skip this phase and note "Railway MCP not available."
+**IMPORTANT:** Prefer Railway MCP tools if connected (test by calling `list-projects`). If the MCP isn't available, fall back to the `railway` CLI (`railway status`, `railway logs`) or the dashboard; only skip and note "Railway not inspected" if neither is reachable.
 
 If Railway is used by this project:
 

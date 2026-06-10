@@ -115,7 +115,7 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 - "knip / depcheck updates"
 
 ### Accessibility
-- "WCAG 2.3 status / WCAG 3.0 draft"
+- "WCAG 3.0 working draft status" / "WCAG 2.2 still current standard"
 - "European Accessibility Act enforcement [current year]"
 - "axe-core latest rules"
 

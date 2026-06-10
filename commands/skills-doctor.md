@@ -54,7 +54,7 @@ For each skill that references specific framework versions, tools, or APIs:
 
 - WebSearch for the latest stable version of the framework / lib mentioned.
 - If the skill references "Next.js 14 / 15 / etc.", check current major and note migration.
-- WCAG 2.2 → 2.3? OWASP Top 10 → newer edition?
+- WCAG 2.2 → WCAG 3.0 (Working Draft, ~2028; 2.2 stays current)? OWASP Top 10 → newer edition (2025 is out)?
 - Supabase Auth → still GoTrue, or migrated?
 - Postgres major bump that changes the queries we suggest?
 - Node LTS line?
@@ -122,7 +122,7 @@ Suggest 2-3 net-new skills max — quality over quantity.
 
 For each major domain represented in the skill library, WebSearch:
 
-- "WCAG 2.3 release" / "WCAG 2.2 updates 2026"
+- "WCAG 3.0 working draft status" / "WCAG 2.2 updates 2026"
 - "OWASP Top 10 2025" / "OWASP API Security Top 10"
 - "Supabase RLS best practices 2026"
 - "@supabase/ssr breaking changes"

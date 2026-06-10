@@ -21,7 +21,7 @@ Before auditing, gather current best practices. Search the web for:
 2. **"Google Core Web Vitals 2026"** — current thresholds for LCP, INP (Interaction to Next Paint, replaced FID), CLS
 3. **"latest Google algorithm updates 2026"** — any new ranking factors, deprecations, or signals?
 4. **"Google Search structured data updates 2026"** — new supported types, deprecated schemas
-5. **"Next.js 15 SEO features"** (or whatever the latest major version is)
+5. **"Next.js 16 SEO features"** (or whatever the latest major version is)
 
 Summarize what has changed and adapt the audit checklist accordingly. Note any NEW requirements that are not covered in the phases below and add them to the relevant phase.
 

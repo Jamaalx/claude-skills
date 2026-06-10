@@ -511,7 +511,7 @@ Check for FCP blockers:
 
 **IMPORTANT**: Only run checks for services that have MCP tools available in this session. Skip sections where the MCP server is not connected. These are READ-ONLY checks — do NOT modify anything on live infrastructure.
 
-### 11a. Railway (if `mcp__railway-mcp-server__*` tools available)
+### 11a. Railway (via Railway MCP if connected; else the `railway` CLI — `railway status`, `railway logs` — or the dashboard)
 
 1. **Deployment region**:
    - Check what region the service is deployed to
