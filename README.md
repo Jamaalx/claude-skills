@@ -1,6 +1,6 @@
 # claude-skills
 
-22 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
+23 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-7c3aed)](https://claude.com/claude-code)
@@ -19,6 +19,7 @@
 | [`/auth-audit`](commands/auth-audit.md) | Auth & session: login flow, cookies, JWT handling, middleware safety, privilege escalation, MFA, rate-limiting, audit logging. | Monthly |
 | [`/rls-audit`](commands/rls-audit.md) | Supabase RLS / Postgres authorization: unprotected tables, permissive policies, self-elevation vectors, `SECURITY DEFINER`, service-role leakage. | Monthly |
 | [`/deps-audit`](commands/deps-audit.md) | CVEs per locked version, outdated packages, breaking changes on majors, supply-chain risk, license compliance, bundle bloat. npm + pip. | Monthly |
+| [`/selfhost-updates`](commands/selfhost-updates.md) | Self-hosted/open-source stack: inventory (Coolify, self-hosted Supabase, Netdata, Postgres, Redis, proxies, n8n, Gitea, Grafana…), installed-vs-latest drift, security releases & CVEs, EOL (endoflife.date), breaking changes. Backup-first update plan. Read-only. | Monthly |
 | [`/db-health`](commands/db-health.md) | Postgres / Supabase: missing & unused indexes, slow queries (`pg_stat_statements`), bloat, FK orphans, N+1 patterns, growth. | Quarterly |
 | [`/perf-audit`](commands/perf-audit.md) | Bundle size, Core Web Vitals, images, fonts, caching, SSR/SSG, DB queries, API response times, Lighthouse. | Quarterly |
 | [`/seo-audit`](commands/seo-audit.md) | Meta tags, OpenGraph, structured data, sitemap, robots.txt, headings, internal linking, mobile, Core Web Vitals. | Quarterly |

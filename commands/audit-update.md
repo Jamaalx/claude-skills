@@ -1,5 +1,5 @@
 ---
-description: "Update all audit skills (security, llm-security, api-security, server-hardening, attack-surface, architecture-review, resilience-audit, auth, rls, deps, db-health, seo, perf, a11y, gdpr, uptime) with latest web research, best practices, and framework changes. Run monthly. For structural skill issues (broken MCP refs, overlaps), use /skills-doctor instead."
+description: "Update all audit skills (security, llm-security, api-security, server-hardening, attack-surface, architecture-review, resilience-audit, selfhost-updates, auth, rls, deps, db-health, seo, perf, a11y, gdpr, uptime) with latest web research, best practices, and framework changes. Run monthly. For structural skill issues (broken MCP refs, overlaps), use /skills-doctor instead."
 allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, Write, Edit]
 ---
 
@@ -50,6 +50,12 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 - "dead letter queue + retry best practices [current year]"
 - "graceful degradation / circuit breaker patterns"
 - "serverless cold start / connection pooling Supabase [current year]"
+
+### Self-hosted stack (selfhost-updates.md)
+- "Coolify latest release [current year]"
+- "Supabase self-hosting recommended versions [current year]"
+- "PostgreSQL / Redis / Ubuntu end-of-life dates" (verify endoflife.date still the source)
+- "Netdata / Traefik / n8n / Grafana latest stable + CVEs [current year]"
 
 ### SEO
 - "Google algorithm updates [current year]"
@@ -108,6 +114,7 @@ Read all audit skill files:
 - ~/.claude/commands/attack-surface.md
 - ~/.claude/commands/architecture-review.md
 - ~/.claude/commands/resilience-audit.md
+- ~/.claude/commands/selfhost-updates.md
 - ~/.claude/commands/auth-audit.md
 - ~/.claude/commands/rls-audit.md
 - ~/.claude/commands/deps-audit.md
