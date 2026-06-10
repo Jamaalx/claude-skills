@@ -17,7 +17,7 @@ Use Supabase MCP:
 
 - `list_tables` — every table, row count, size.
 - Identify: hot tables (large or frequently queried), reference tables (small, joined often), append-only logs.
-- Identify table-naming domains (e.g., `food_cost_*`, `nexus_*`, `dashboard_*`).
+- Identify table-naming domains (e.g., `billing_*`, `auth_*`, `analytics_*`).
 
 ---
 
