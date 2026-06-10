@@ -1,6 +1,6 @@
 # claude-skills
 
-16 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
+20 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-7c3aed)](https://claude.com/claude-code)
@@ -11,7 +11,11 @@
 
 | Skill | What it does | Cadence |
 |-------|--------------|---------|
-| [`/security-audit`](commands/security-audit.md) | Full security audit: code, dependencies, secrets, OWASP, originality, live infra (Supabase / Railway / Cloudflare / GitHub), data privacy. 13 phases. | Monthly |
+| [`/security-audit`](commands/security-audit.md) | Full security audit: code, dependencies, secrets, OWASP 2025, AI/LLM agent security, deep supply-chain, originality, live infra (Supabase / Railway / Cloudflare / GitHub), data privacy. 15 phases. | Monthly |
+| [`/llm-security`](commands/llm-security.md) | AI/LLM agent security (OWASP LLM Top 10): prompt injection (direct + indirect/RAG), jailbreaks, system-prompt & secret leakage, excessive agency / tool abuse, RAG exfiltration, insecure output handling, cost-DoS. Ships a red-team probe set. | Monthly (if you ship an AI agent) |
+| [`/api-security`](commands/api-security.md) | API security (OWASP API Top 10): BOLA/IDOR, broken auth, mass assignment & excessive data exposure, resource-consumption limits, function-level authz, SSRF, shadow endpoints. REST + GraphQL + serverless. | Monthly |
+| [`/server-hardening`](commands/server-hardening.md) | Self-hosted Linux/Docker hardening (Hetzner/VPS + Coolify): SSH, firewall, fail2ban, ufw-bypassing Docker ports, container secrets & privileges, OS patching, TLS, intrusion signs. Read-only recon. | Quarterly |
+| [`/attack-surface`](commands/attack-surface.md) | External outside-in recon on domains you own: DNS, subdomain enumeration (crt.sh), TLS health, security headers, exposed `.env`/`.git`/backups, open redirects, SPF/DKIM/DMARC, subdomain takeover. Non-destructive, owned-assets only. | Quarterly |
 | [`/auth-audit`](commands/auth-audit.md) | Auth & session: login flow, cookies, JWT handling, middleware safety, privilege escalation, MFA, rate-limiting, audit logging. | Monthly |
 | [`/rls-audit`](commands/rls-audit.md) | Supabase RLS / Postgres authorization: unprotected tables, permissive policies, self-elevation vectors, `SECURITY DEFINER`, service-role leakage. | Monthly |
 | [`/deps-audit`](commands/deps-audit.md) | CVEs per locked version, outdated packages, breaking changes on majors, supply-chain risk, license compliance, bundle bloat. npm + pip. | Monthly |
@@ -72,10 +76,11 @@ Most skills work with stock Claude Code. A few use optional MCP servers for live
 
 | MCP server | Used by | Required? |
 |------------|---------|-----------|
-| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit` | Strongly recommended |
-| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check` | Optional |
+| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit`, `api-security`, `llm-security` | Strongly recommended |
+| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check`, `attack-surface` | Optional |
 | Playwright MCP | `a11y-audit`, `perf-audit` | Optional |
 | `gh` CLI | `security-audit`, `backup-audit` | Recommended |
+| SSH / shell access to the host | `server-hardening` (otherwise runs in guided mode) | Optional |
 
 Each skill degrades gracefully — if an MCP server isn't connected, the corresponding phase is skipped and noted in the report.
 
@@ -87,9 +92,11 @@ See [`examples/`](examples/) for sanitized sample fix-kit outputs from fictional
 
 ```
 Daily / per deploy   → /prod-readiness
-Monthly             → /security-audit, /auth-audit, /rls-audit, /deps-audit, /audit-update
+Monthly             → /security-audit, /llm-security, /api-security, /auth-audit, /rls-audit,
+                       /deps-audit, /audit-update
 Quarterly           → /db-health, /perf-audit, /seo-audit, /uptime-check, /a11y-audit,
-                       /gdpr-audit, /backup-audit, /dead-code, /skills-doctor
+                       /gdpr-audit, /backup-audit, /dead-code, /server-hardening,
+                       /attack-surface, /skills-doctor
 On demand           → /migration-audit (before applying), /perf-audit (after major refactor)
 ```
 

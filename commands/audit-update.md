@@ -1,5 +1,5 @@
 ---
-description: "Update all audit skills (security, auth, rls, deps, db-health, seo, perf, a11y, gdpr, uptime) with latest web research, best practices, and framework changes. Run monthly. For structural skill issues (broken MCP refs, overlaps), use /skills-doctor instead."
+description: "Update all audit skills (security, llm-security, api-security, server-hardening, attack-surface, auth, rls, deps, db-health, seo, perf, a11y, gdpr, uptime) with latest web research, best practices, and framework changes. Run monthly. For structural skill issues (broken MCP refs, overlaps), use /skills-doctor instead."
 allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, Write, Edit]
 ---
 
@@ -19,6 +19,29 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 - "Supabase security best practices [current year]"
 - "npm supply chain attacks [current year]"
 - "new web security headers [current year]"
+
+### AI / LLM security (llm-security.md)
+- "OWASP Top 10 for LLM Applications [current year] update"
+- "prompt injection mitigation [current year]"
+- "AI agent / tool-use security best practices [current year]"
+- "RAG data exfiltration / multi-tenant vector store security"
+- "MCP server security risks [current year]"
+
+### API security (api-security.md)
+- "OWASP API Security Top 10 [current/next edition]"
+- "GraphQL security best practices [current year]"
+- "BOLA / mass assignment prevention [current year]"
+
+### Server / container hardening (server-hardening.md)
+- "Docker security best practices [current year]"
+- "Coolify security hardening [current year]"
+- "CIS benchmark Ubuntu / Debian [current year]"
+- "fail2ban / sshd hardening [current year]"
+
+### External attack surface (attack-surface.md)
+- "subdomain takeover [current year]"
+- "DMARC / BIMI adoption [current year]"
+- "certificate transparency recon"
 
 ### SEO
 - "Google algorithm updates [current year]"
@@ -71,6 +94,10 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 
 Read all audit skill files:
 - ~/.claude/commands/security-audit.md
+- ~/.claude/commands/llm-security.md
+- ~/.claude/commands/api-security.md
+- ~/.claude/commands/server-hardening.md
+- ~/.claude/commands/attack-surface.md
 - ~/.claude/commands/auth-audit.md
 - ~/.claude/commands/rls-audit.md
 - ~/.claude/commands/deps-audit.md
