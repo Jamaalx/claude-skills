@@ -245,6 +245,24 @@ Check `next.config.js` for custom headers:
 - Are ETags enabled? (helps with 304 Not Modified responses)
 - Check if the server sends `Last-Modified` headers for static content
 
+### 6f. Application-level cache (cache-aside) correctness
+The HTTP/CDN checks above are about *transport* caching. This is about an explicit cache in front of the DB (Redis / Upstash / in-memory / `unstable_cache` / `react cache`):
+- **Cache-aside pattern correct?** read → on miss, fetch from DB → write to cache → return; on hit, return. Flag ad-hoc caching that never invalidates.
+- **Invalidation strategy**: how is a cached value cleared/updated on write? Stale-forever cache is worse than no cache. Look for writes that update the DB but not (or wrongly) the cache.
+- **TTL chosen deliberately** per data volatility (file metadata = long; live counts = short), not a blanket default.
+- **Cache stampede / thundering herd**: when a hot key expires, do N concurrent requests all hit the DB at once? (mitigate with single-flight / lock / `stale-while-revalidate` / jittered TTL).
+- **What's cached**: small, hot, rarely-changing values (metadata, config, computed aggregates) — NOT large blobs/files in an in-memory KV (RAM is expensive and Redis isn't built to stream large objects; serve those via object storage + CDN, see 6g).
+- **Key design**: keys include tenant/auth scope so one user's cached response can't be served to another.
+- **Pre-computation**: expensive computations (reports, aggregates) cached/materialized rather than recomputed per request.
+
+### 6g. Large files & object-storage offload
+Large uploads/downloads streamed *through* the app server hurt latency, memory, and reliability — and are an architectural smell, not just a perf one:
+- **Uploads**: are large files streamed through your API/server, or offloaded to object storage (S3 / GCS / Supabase Storage / R2) via **signed/presigned URLs** so the client uploads directly to the bucket? Direct-to-bucket bypasses your compute entirely (faster + cheaper + safer). Flag any handler buffering/streaming multi-MB bodies through the server or into the relational DB.
+- **Metadata vs blob split**: file *metadata* (id, name, size, type, owner) in the DB; the *bytes* in object storage — never the blob in Postgres.
+- **Downloads/serving**: served via CDN / signed URLs / range requests, not proxied byte-by-byte through the origin.
+- **Signed-URL hygiene**: short expiry, size/content-type constraints (this is a perf+security win — cross-ref `attack-surface` / `security-audit`).
+- Image assets specifically: also covered by Phase 4, but confirm they're on a CDN edge, not the origin container.
+
 ---
 
 ## PHASE 7: DATABASE & API PERFORMANCE
@@ -684,6 +702,8 @@ After completing ALL phases, generate this report:
 - API caching: [configured/missing]
 - ISR pages: [count], revalidation: [times]
 - CDN caching: [configured/missing]
+- App cache-aside: [present? invalidation correct? stampede-safe?]
+- Object-storage offload: [large files via signed URLs / direct-to-bucket? or streamed through server?]
 
 ## DATABASE & API
 - N+1 queries found: [count]

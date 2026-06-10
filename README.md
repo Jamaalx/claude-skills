@@ -1,6 +1,6 @@
 # claude-skills
 
-20 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
+22 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-7c3aed)](https://claude.com/claude-code)
@@ -26,6 +26,8 @@
 | [`/a11y-audit`](commands/a11y-audit.md) | WCAG 2.2 AA conformance: keyboard nav, screen reader, contrast, alt text, ARIA, focus, forms, motion, mobile. Runs axe-core + Lighthouse. | Quarterly |
 | [`/gdpr-audit`](commands/gdpr-audit.md) | GDPR / ePrivacy: cookie banner, privacy policy, terms, data retention, user rights, sub-processor DPA, marketing consent. RO-specific extras (ANSPDCP, ANPC). | Quarterly |
 | [`/backup-audit`](commands/backup-audit.md) | DR posture: Supabase PITR, Coolify/Hetzner snapshots, retention, restore-test recency, GitHub mirroring, Cloudflare config backup. | Quarterly |
+| [`/architecture-review`](commands/architecture-review.md) | System-design review (not code): component & data-flow map, state location, coupling, single points of failure, scaling strategy, sync-vs-async boundaries, monolith-vs-services, evolvability. Tradeoff-aware, flags over-engineering. Writes a system map + ADRs + staged roadmap. | Before scaling / major features |
+| [`/resilience-audit`](commands/resilience-audit.md) | Reliability / failure modes: missing timeouts, retries without backoff/idempotency, the dual-write problem, dead-letter queues, broker at-least-once, cron overlap/missed runs, circuit breakers, graceful degradation, health checks & graceful shutdown. | Quarterly |
 | [`/migration-audit`](commands/migration-audit.md) | Safety review of pending Postgres migrations: destructive ops, locking impact on large tables, reversibility, RLS preservation. | On demand (before applying) |
 | [`/dead-code`](commands/dead-code.md) | Unused files, exports, components, npm/pip packages, duplicate logic, commented-out blocks, orphan API routes, dangling assets. | Quarterly |
 | [`/prod-readiness`](commands/prod-readiness.md) | Fast pre-deploy gate (<2 min): RLS on new tables, env vars, build & typecheck, no PII in logs, service-role not in client. | Before every prod deploy |
@@ -76,8 +78,8 @@ Most skills work with stock Claude Code. A few use optional MCP servers for live
 
 | MCP server | Used by | Required? |
 |------------|---------|-----------|
-| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit`, `api-security`, `llm-security` | Strongly recommended |
-| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check`, `attack-surface` | Optional |
+| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit`, `api-security`, `llm-security`, `resilience-audit`, `architecture-review` | Strongly recommended |
+| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check`, `attack-surface`, `architecture-review` | Optional |
 | Playwright MCP | `a11y-audit`, `perf-audit` | Optional |
 | `gh` CLI | `security-audit`, `backup-audit` | Recommended |
 | SSH / shell access to the host | `server-hardening` (otherwise runs in guided mode) | Optional |
@@ -96,8 +98,9 @@ Monthly             → /security-audit, /llm-security, /api-security, /auth-aud
                        /deps-audit, /audit-update
 Quarterly           → /db-health, /perf-audit, /seo-audit, /uptime-check, /a11y-audit,
                        /gdpr-audit, /backup-audit, /dead-code, /server-hardening,
-                       /attack-surface, /skills-doctor
-On demand           → /migration-audit (before applying), /perf-audit (after major refactor)
+                       /attack-surface, /resilience-audit, /skills-doctor
+On demand           → /migration-audit (before applying), /perf-audit (after major refactor),
+                       /architecture-review (before scaling or a major new feature)
 ```
 
 ## Compatibility
