@@ -1,6 +1,6 @@
 # claude-skills
 
-23 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
+27 production-grade audit & maintenance slash-commands for [Claude Code](https://claude.com/claude-code). Each runs a deep, multi-phase audit on your project and writes a copy-paste-ready fix kit so the work can be applied by a fresh Claude Code session — including by you, an agent, or a different model.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-7c3aed)](https://claude.com/claude-code)
@@ -24,13 +24,17 @@
 | [`/perf-audit`](commands/perf-audit.md) | Bundle size, Core Web Vitals, images, fonts, caching, SSR/SSG, DB queries, API response times, Lighthouse. | Quarterly |
 | [`/seo-audit`](commands/seo-audit.md) | Meta tags, OpenGraph, structured data, sitemap, robots.txt, headings, internal linking, mobile, Core Web Vitals. | Quarterly |
 | [`/uptime-check`](commands/uptime-check.md) | Endpoints, SSL certs, domains, Railway / Supabase / Cloudflare status, error rates, response times, alerting setup. | Quarterly |
+| [`/observability-audit`](commands/observability-audit.md) | Internal instrumentation: structured logging, secrets/PII in logs, error tracking (Sentry + source maps + releases), metrics, tracing, alert routing & signal-vs-noise, dashboards/SLIs, audit logging. The "can you debug a 2am incident?" test. | Quarterly |
+| [`/cost-audit`](commands/cost-audit.md) | FinOps: billed-service inventory & spend, cost drivers, compute waste (oversized/idle/always-on), unused Supabase projects, egress without CDN, LLM token spend (model over-selection, no caching/caps), storage growth, tier cliffs. Savings by € impact. Read-only. | Quarterly |
 | [`/a11y-audit`](commands/a11y-audit.md) | WCAG 2.2 AA conformance: keyboard nav, screen reader, contrast, alt text, ARIA, focus, forms, motion, mobile. Runs axe-core + Lighthouse. | Quarterly |
 | [`/gdpr-audit`](commands/gdpr-audit.md) | GDPR / ePrivacy: cookie banner, privacy policy, terms, data retention, user rights, sub-processor DPA, marketing consent. RO-specific extras (ANSPDCP, ANPC). | Quarterly |
+| [`/email-deliverability`](commands/email-deliverability.md) | Inbox-readiness: SPF/DKIM/DMARC auth & alignment, policy enforcement + report analysis, ESP/IP reputation & blocklists, spam-score & content, transactional-vs-marketing separation, list hygiene, one-click unsubscribe, warmup, bounce/complaint monitoring. | Quarterly |
 | [`/backup-audit`](commands/backup-audit.md) | DR posture: Supabase PITR, Coolify/Hetzner snapshots, retention, restore-test recency, GitHub mirroring, Cloudflare config backup. | Quarterly |
 | [`/architecture-review`](commands/architecture-review.md) | System-design review (not code): component & data-flow map, state location, coupling, single points of failure, scaling strategy, sync-vs-async boundaries, monolith-vs-services, evolvability. Tradeoff-aware, flags over-engineering. Writes a system map + ADRs + staged roadmap. | Before scaling / major features |
 | [`/resilience-audit`](commands/resilience-audit.md) | Reliability / failure modes: missing timeouts, retries without backoff/idempotency, the dual-write problem, dead-letter queues, broker at-least-once, cron overlap/missed runs, circuit breakers, graceful degradation, health checks & graceful shutdown. | Quarterly |
 | [`/migration-audit`](commands/migration-audit.md) | Safety review of pending Postgres migrations: destructive ops, locking impact on large tables, reversibility, RLS preservation. | On demand (before applying) |
 | [`/dead-code`](commands/dead-code.md) | Unused files, exports, components, npm/pip packages, duplicate logic, commented-out blocks, orphan API routes, dangling assets. | Quarterly |
+| [`/test-audit`](commands/test-audit.md) | Test-suite audit: critical-path coverage (payments/auth/data), coverage gaps, test quality (can't-fail tests, over-mocking, snapshot abuse), flaky tests, unit/integration/E2E balance, CI gating. Risk-first "what to test next". | Monthly |
 | [`/prod-readiness`](commands/prod-readiness.md) | Fast pre-deploy gate (<2 min): RLS on new tables, env vars, build & typecheck, no PII in logs, service-role not in client. | Before every prod deploy |
 | [`/audit-update`](commands/audit-update.md) | Refreshes every audit skill above with the latest web research, framework versions, OWASP/WCAG editions, best practices. | Monthly |
 | [`/skills-doctor`](commands/skills-doctor.md) | Meta-audit: scans all skills for broken MCP tool refs, stale framework versions, overlapping scope, missing coverage. | Quarterly |
@@ -79,8 +83,8 @@ Most skills work with stock Claude Code. A few use optional MCP servers for live
 
 | MCP server | Used by | Required? |
 |------------|---------|-----------|
-| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit`, `api-security`, `llm-security`, `resilience-audit`, `architecture-review` | Strongly recommended |
-| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check`, `attack-surface`, `architecture-review` | Optional |
+| Supabase MCP (cloud or self-hosted via Postgres MCP) | `rls-audit`, `db-health`, `migration-audit`, `backup-audit`, `security-audit`, `api-security`, `llm-security`, `resilience-audit`, `architecture-review`, `observability-audit`, `cost-audit` | Strongly recommended |
+| Cloudflare MCP | `security-audit`, `backup-audit`, `uptime-check`, `attack-surface`, `architecture-review`, `cost-audit` | Optional |
 | Playwright MCP | `a11y-audit`, `perf-audit` | Optional |
 | `gh` CLI | `security-audit`, `backup-audit` | Recommended |
 | SSH / shell access to the host | `server-hardening` (otherwise runs in guided mode) | Optional |
@@ -96,10 +100,11 @@ See [`examples/`](examples/) for sanitized sample fix-kit outputs from fictional
 ```
 Daily / per deploy   → /prod-readiness
 Monthly             → /security-audit, /llm-security, /api-security, /auth-audit, /rls-audit,
-                       /deps-audit, /audit-update
+                       /deps-audit, /test-audit, /selfhost-updates, /audit-update
 Quarterly           → /db-health, /perf-audit, /seo-audit, /uptime-check, /a11y-audit,
                        /gdpr-audit, /backup-audit, /dead-code, /server-hardening,
-                       /attack-surface, /resilience-audit, /skills-doctor
+                       /attack-surface, /resilience-audit, /observability-audit,
+                       /cost-audit, /email-deliverability, /skills-doctor
 On demand           → /migration-audit (before applying), /perf-audit (after major refactor),
                        /architecture-review (before scaling or a major new feature)
 ```
