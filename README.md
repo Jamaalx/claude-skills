@@ -137,6 +137,10 @@ Pull requests welcome. To add a new skill:
 3. Document the cadence in the README table.
 4. Run `/skills-doctor` to verify structural consistency.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) — one entry per release, including each monthly `/audit-update` refresh and which skills it touched.
+
 ## License
 
 [MIT](LICENSE). Use it, fork it, ship it.
