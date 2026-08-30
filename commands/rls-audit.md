@@ -98,14 +98,29 @@ Specifically check:
 ## PHASE 5: SECURITY DEFINER FUNCTIONS
 
 ```sql
-SELECT n.nspname AS schema, p.proname AS func, pg_get_function_arguments(p.oid) AS args, l.lanname AS lang, p.prosecdef AS is_definer
+-- Lists secdef functions AND answers the two questions that matter directly:
+-- who can execute them, and whether search_path is pinned.
+SELECT n.nspname AS schema,
+       p.proname AS func,
+       pg_get_function_arguments(p.oid) AS args,
+       -- who can execute: NULL proacl = implicit PUBLIC EXECUTE (so anon too)
+       COALESCE(array_to_string(p.proacl, ', '), '(PUBLIC — implicit)') AS grants,
+       (p.proacl IS NULL
+        OR array_to_string(p.proacl, ',') LIKE '%anon=X%')            AS anon_can_execute,
+       COALESCE(array_to_string(p.proconfig, ', '), '(none)')          AS settings,
+       (p.proconfig IS NULL
+        OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c
+                       WHERE c LIKE 'search_path=%'))                  AS search_path_unpinned
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
-JOIN pg_language l ON l.oid = p.prolang
 WHERE n.nspname IN ('public','auth')
-  AND p.prosecdef = true
-ORDER BY schema, func;
+  AND p.prosecdef
+ORDER BY anon_can_execute DESC, search_path_unpinned DESC, schema, func;
 ```
+
+The sort puts the dangerous ones first. `anon_can_execute = true` means anyone holding the anon key
+— which is **public, it ships in the browser bundle** — can call the function via
+`POST /rest/v1/rpc/<name>`. This is not theoretical: confirm it with a real curl, don't assume.
 
 For each SECURITY DEFINER function:
 - Read the source (`pg_get_functiondef(oid)`).
@@ -113,6 +128,53 @@ For each SECURITY DEFINER function:
 - Does it use `SET search_path = pg_catalog, public` to prevent search-path attacks?
 - Does it grant access to data that the caller's RLS would otherwise hide?
 - Is it exposed via PostgREST (RPC)? `GRANT EXECUTE` to `anon` / `authenticated`?
+
+### 5a. Tenant-from-payload — the easiest pattern to miss
+
+`SECURITY DEFINER` bypasses RLS **by definition**, and foreign keys between tables do not check the
+tenant. So a function shaped like `fn_x(p_tenant_id uuid, p_some_id uuid, ...)` that **trusts its
+arguments** is a cross-tenant hole even when it filters on them correctly — because the caller
+chooses what to send.
+
+For every secdef function, ask: **where does the tenant come from?**
+- ❌ from a parameter (`p_tenant_id`) → anyone can pass a different tenant;
+- ✅ from claims (`fn_tenant_id()` / `auth.jwt()`), with `RAISE EXCEPTION` when NULL;
+- ✅ and every **id received** validated with `EXISTS` as belonging to that tenant — not just the tenant itself.
+
+A related second pattern: functions that are **oracles**, not just readers. A PIN/code/token check
+exposed as RPC is brute-forceable indefinitely; the application's rate limit **does not apply** when
+the attacker hits the RPC directly. A 4-digit PIN is 10,000 attempts.
+
+### 5b. Policy performance (not security, but it costs you)
+
+RLS runs **per row**. Two checks, both from Supabase's own guidance:
+- **An index on every column a policy filters by** (typically `tenant_id`, `user_id`). Without one,
+  every query becomes a full scan. Indexed, RLS typically adds under 5 ms.
+- **`auth.uid()` wrapped in a subquery**: `(select auth.uid())` rather than bare `auth.uid()` —
+  otherwise it is re-evaluated for every row instead of once.
+
+```sql
+-- Columns a policy filters on, with no index STARTING with them.
+-- Ordered by table size: that's where it hurts first.
+SELECT c.relname AS table_name, a.attname AS column_name,
+       pg_size_pretty(pg_total_relation_size(c.oid)) AS size
+FROM pg_policy pol
+JOIN pg_class c ON c.oid = pol.polrelid
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+WHERE pg_get_expr(pol.polqual, pol.polrelid) ~ ('\m' || a.attname || '\M')
+  AND NOT EXISTS (                       -- indkey[0] = the index's LEADING column;
+    SELECT 1 FROM pg_index i             -- an index (x, tenant_id) does NOT help a policy on tenant_id
+    WHERE i.indrelid = c.oid AND a.attnum = i.indkey[0]
+  )
+GROUP BY c.relname, a.attname, c.oid
+ORDER BY pg_total_relation_size(c.oid) DESC;
+```
+
+Two details that separate a useful query from noise, both verified against a real database:
+- **`~ '\m...\M'` (whole word), not `LIKE '%...%'`** — otherwise a column named `id` matches any
+  expression containing `tenant_id`, and you drown in false positives.
+- **`i.indkey[0]`, not `ANY(i.indkey)`** — a composite index `(created_at, tenant_id)` does not help a
+  policy filtering on `tenant_id`; the column has to be **leading**.
 
 ---
 

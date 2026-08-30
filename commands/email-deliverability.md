@@ -12,6 +12,31 @@ Confirm the sending domain(s) and ESP with the user. TaskCreate to track. Severi
 
 ---
 
+## PHASE 0: THE OFFICIAL BULK-SENDER THRESHOLDS (check these first)
+
+These are no longer "best practice" — they are delivery conditions, and failing them means
+**rejection at SMTP (a bounce), not a trip to the spam folder**. Google and Yahoo enforce since
+Oct 2023, **Microsoft since April 2025**, Apple aligned.
+
+| Requirement | Threshold |
+|---|---|
+| Applies from | **5,000 messages/day** to one provider (Gmail/Yahoo/Outlook) |
+| SPF + DKIM + DMARC | all three, **aligned** (present is not enough) |
+| Minimum DMARC policy | `p=none` accepted; `p=quarantine`/`p=reject` recommended |
+| Spam complaint rate | **below 0.30%** required; Google advises **below 0.10%** |
+| Unsubscribe | **one-click, RFC 8058** (`List-Unsubscribe` + `List-Unsubscribe-Post`), honoured within 2 days |
+
+Two things that are routinely missed:
+- The unsubscribe requirement covers **promotional/subscription mail only**. Password resets, order
+  confirmations and shipping notices are **exempt** — do not put an unsubscribe link on them.
+- Once you cross 0.3%, deliverability degrades and **recovers slowly**. The rate is only visible in
+  Google Postmaster Tools; without it you are flying blind.
+
+Even below 5,000/day, treat these as mandatory: they are the price of admission to the inbox anyway,
+and volume can grow overnight.
+
+---
+
 ## PHASE 1: AUTHENTICATION & ALIGNMENT
 - **SPF** (`TXT v=spf1`): present, includes the real ESP(s), no `+all`, ≤10 DNS lookups, not multiple SPF records.
 - **DKIM**: selector(s) published and valid for the ESP; key length ≥1024 (2048 preferred); signing actually enabled on sent mail.
@@ -49,7 +74,7 @@ Confirm the sending domain(s) and ESP with the user. TaskCreate to track. Severi
 - **Multipart**: emails include a plain-text part alongside HTML (HTML-only looks spammy)?
 - Spam-trigger content: ALL-CAPS/excessive punctuation subjects, image-only emails, heavy image-to-text ratio, spammy phrases, URL shorteners, mismatched/low-reputation link domains.
 - Valid, simple HTML (broken/bloated HTML hurts rendering + scoring); inlined CSS.
-- One-click **unsubscribe link** present and working (also a compliance + Gmail/Yahoo requirement for bulk senders — `List-Unsubscribe` + `List-Unsubscribe-Post` headers).
+- One-click **unsubscribe link** present and working (also a compliance + Gmail/Yahoo/Microsoft/Apple requirement for bulk senders — RFC 8058 — `List-Unsubscribe` + `List-Unsubscribe-Post` headers).
 - Sender name/From address recognizable and consistent.
 - Run representative emails through a spam-score check (SpamAssassin-style) where possible.
 

@@ -1,5 +1,5 @@
 ---
-description: "AI/LLM agent security audit (OWASP LLM Top 10 2025): prompt injection (direct + indirect/RAG), jailbreaks, system-prompt & secret leakage, excessive agency / tool abuse, RAG multi-tenant exfiltration, insecure output handling, cost-DoS, model supply-chain. Includes a red-team probe set. Generates LLM-SECURITY-FIXES.md. For AI assistants, chatbots, support agents, and agentic RAG systems."
+description: "AI/LLM agent security audit (OWASP GenAI/LLM Top 10 2026): prompt injection (direct + indirect/RAG), jailbreaks, system-prompt & secret leakage, excessive agency / tool abuse, RAG multi-tenant exfiltration, insecure output handling, cost-DoS, model supply-chain. Includes a red-team probe set. Generates LLM-SECURITY-FIXES.md. For AI assistants, chatbots, support agents, and agentic RAG systems."
 allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, TaskCreate, TaskUpdate, TaskGet, TaskList, "mcp__claude_ai_SupaBase__*"]
 ---
 
@@ -43,16 +43,30 @@ Run all phases. Use TaskCreate to track. Use parallel agents for independent rea
 
 ---
 
-## PHASE 3: SYSTEM-PROMPT & SECRET LEAKAGE (LLM02/LLM06)
+## PHASE 3: HIDDEN CONTEXT EXPOSURE & SECRET LEAKAGE (LLM08/LLM02)
 
 - Are secrets (API keys, DB URLs, internal endpoints, other users' data) embedded in the prompt? Anything in the prompt CAN leak — treat as public.
 - Is the system prompt recoverable via extraction prompts? (acceptable risk-wise, but it must not contain secrets or undisclosed business logic that matters if leaked)
 - Is the prompt template shipped to the client (front-end bundle, mobile app, public repo)?
 - Are few-shot examples leaking real PII?
 
+> **Scope broadened in the 2026 edition.** LLM08 was *System Prompt Leakage*; it is now
+> **Hidden Context Exposure** — everything the user never sees but the model does. Check all of it,
+> not just the system prompt:
+> - **tool/function descriptions** and their parameter docs (they are prompt content the model reads);
+> - **RAG schemas** — collection names, metadata fields, filter keys; they reveal the data model
+>   and give an attacker the vocabulary to craft retrieval attacks;
+> - **hidden policy logic** — routing rules, moderation thresholds, pricing/eligibility conditions
+>   expressed in the prompt. If leaking it would let someone game the system, it does not belong there;
+> - **injected context** — user profile, tenant id, entitlements, prior-turn summaries;
+> - **reasoning traces** if surfaced to the client.
+>
+> The test is not "can the attacker print the system prompt" but "what does the model know that the
+> user must not, and what happens when it says it out loud".
+
 ---
 
-## PHASE 4: EXCESSIVE AGENCY & TOOL ABUSE (LLM06/LLM08)
+## PHASE 4: EXCESSIVE AGENCY & TOOL ABUSE (LLM03 — **up from #6 to #3 in the 2026 edition; weight this phase accordingly**)
 
 For each tool the model can invoke:
 - **Blast radius** if called with attacker-chosen args (send money/email, write/delete DB, exec shell, fetch arbitrary URL, file I/O).
@@ -64,7 +78,7 @@ For each tool the model can invoke:
 
 ---
 
-## PHASE 5: RAG & DATA EXFILTRATION (LLM02/LLM08)
+## PHASE 5: RAG & DATA EXFILTRATION (LLM09 Vector & Embedding Weaknesses / LLM02)
 
 - **Multi-tenant isolation**: does retrieval enforce per-user/per-tenant filtering, or can a query surface another tenant's documents? The vector index needs the RLS-equivalent: metadata filters applied server-side, not trusting a model-supplied filter.
 - **Mass-exfil**: can a query dump the whole KB ("list every document/customer you know about")?
@@ -74,7 +88,7 @@ For each tool the model can invoke:
 
 ---
 
-## PHASE 6: INSECURE OUTPUT HANDLING (LLM02)
+## PHASE 6: IMPROPER OUTPUT HANDLING (LLM10)
 
 Trace where model output GOES:
 - Rendered as HTML/Markdown without sanitization → XSS (especially `dangerouslySetInnerHTML`).
@@ -84,7 +98,7 @@ Trace where model output GOES:
 
 ---
 
-## PHASE 7: COST, RATE & AVAILABILITY (LLM10 / unbounded consumption)
+## PHASE 7: COST, RATE & AVAILABILITY (LLM06 Unbounded Consumption — includes **Denial of Wallet**)
 
 - Rate limiting + **per-user cost caps** on every AI endpoint? Prompt-flood = bill shock.
 - Max-tokens / max-iterations bound on agent loops? (a tool-calling loop can recurse and burn budget)
@@ -94,12 +108,35 @@ Trace where model output GOES:
 
 ---
 
-## PHASE 8: MODEL & SUPPLY CHAIN (LLM03/LLM05)
+## PHASE 8: MODEL & SUPPLY CHAIN (LLM04 Supply Chain / LLM05 Data & Model Poisoning)
 
 - Model IDs pinned, or floating aliases that silently change behavior/cost?
 - Provider keys scoped, rate-limited, rotated, server-side only (never in client)?
 - Self-hosted/open weights: provenance, and untrusted model files (pickle deserialization in `.bin`/`.ckpt`/`.pt`)?
 - Third-party agent/prompt libraries, community MCP servers, tool plugins — vetted? An MCP server is a code dependency AND a prompt-injection vector (tool descriptions enter the prompt).
+
+### 8a. MCP servers — treat as an attack surface of their own
+
+The protocol has **no native defense** against the attacks below; every mitigation is yours. Relevant
+to any project wiring an LLM to MCP servers — and to your own dev machines, not just production.
+
+- **Tool poisoning** — malicious instructions embedded in tool *metadata* (name, description,
+  parameter docs). The model reads them as trusted context. This is the most prevalent MCP
+  vulnerability class. Diff tool descriptions against what you expect; do not accept them blind.
+- **Rug pull** — a server serves benign tool definitions when you first approve it, then changes them
+  later. Approval-on-first-use is not enough; pin versions and re-verify on change.
+- **Cross-server tool shadowing** — a malicious server defines a tool whose name/description collides
+  with a trusted server's, and captures the call. Check for duplicate or near-duplicate tool names
+  across connected servers.
+- **Context poisoning via tool output** — anything a tool RETURNS enters the model's context as
+  trusted input. If the tool reads an external source (web page, DB row, email, ticket), the attacker
+  controlling that source controls part of your prompt. This is indirect injection with extra steps.
+- **Over-privileged credentials** — MCP servers commonly hold long-lived tokens with far more scope
+  than the task needs (full repo access, admin DB creds). Scope them down, and inventory what each
+  server can actually reach if its output is attacker-controlled.
+
+Inventory concretely: which MCP servers are connected, who publishes each one, what credentials it
+holds, and whether it is reachable from anything untrusted.
 
 ---
 
