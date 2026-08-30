@@ -4,6 +4,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-7c3aed)](https://claude.com/claude-code)
+[![Lint](https://github.com/Jamaalx/claude-skills/actions/workflows/lint.yml/badge.svg)](https://github.com/Jamaalx/claude-skills/actions/workflows/lint.yml)
+[![Last audit-update](https://img.shields.io/badge/last_audit--update-2026--08-2ea44f)](CHANGELOG.md)
+
+> **Maintenance:** the skills are refreshed monthly with the bundled [`/audit-update`](commands/audit-update.md) skill (latest research, framework versions, OWASP / WCAG editions). Last audit-update: **2026-08** — see [CHANGELOG.md](CHANGELOG.md).
 
 > Battle-tested on real Next.js + Supabase + Railway + Hetzner stacks. Each skill produces an executable plan, not just a list of complaints.
 
