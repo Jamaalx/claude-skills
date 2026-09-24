@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 Monthly refreshes are made with the bundled [`/audit-update`](commands/audit-update.md) skill; structural fixes with [`/skills-doctor`](commands/skills-doctor.md).
 
+## [1.3.1] - 2026-09-24
+
+### Fixed
+- `install.sh`: `--force` now overwrites in a single pass instead of first printing a "leaving as-is — re-run with --force" line for every locally edited skill; unknown arguments (e.g. the typo `-force`) are rejected instead of being silently ignored; `--help` added.
+
+### Added
+- `scripts/check-skills.sh` check 4 — sensitive data in `commands/` and `examples/`: credential-shaped strings, machine home paths, non-placeholder email addresses. `CONTRIBUTING.md` points to it.
+
+### Notes
+- Skill files unchanged: the 27 published skills are identical to the maintainer's local `~/.claude/commands/` as of this date.
+
 ## [1.3.0] - 2026-08-30
 
 ### Changed

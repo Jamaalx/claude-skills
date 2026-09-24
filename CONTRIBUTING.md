@@ -25,7 +25,7 @@ Thanks for considering a contribution.
    - Optional `APPLY` section gated behind explicit user confirmation.
 3. Add the skill to the README table with cadence.
 4. Add the kit filename to the project `.gitignore` rule.
-5. Run `/skills-doctor` locally to check for structural issues.
+5. Run `/skills-doctor` locally to check for structural issues, and `bash scripts/check-skills.sh` (the same check CI runs: frontmatter, README table and count, sensitive data).
 6. Open a PR with a one-paragraph description and one example finding the skill catches.
 
 ## Avoiding personal / client info in skills
@@ -38,7 +38,7 @@ This repo is public. Before submitting:
 - No live IPs, hostnames, internal URLs.
 - No real credentials, anywhere, ever.
 
-The maintainer runs `git diff` against a sensitive-pattern grep before merging.
+`scripts/check-skills.sh` (run in CI on every pull request) fails on credential-shaped strings, machine home paths and non-placeholder email addresses; the maintainer still reviews the diff by hand before merging.
 
 ## License
 
