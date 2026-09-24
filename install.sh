@@ -10,6 +10,17 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
+force=0
+for arg in "$@"; do
+  case "$arg" in
+    --force|-f) force=1 ;;
+    -h|--help)
+      echo "Usage: $0 [--force]   (--force overwrites skills you have edited locally)"
+      exit 0 ;;
+    *) echo "✗ unknown argument: $arg (try --help)" >&2; exit 2 ;;
+  esac
+done
+
 mkdir -p "$DEST"
 
 installed=0
@@ -18,27 +29,19 @@ skipped=0
 for f in "$SRC"/*.md; do
   name=$(basename "$f")
   target="$DEST/$name"
-  if [ -e "$target" ]; then
-    if ! cmp -s "$f" "$target"; then
-      printf "  • %-24s exists with local changes — leaving as-is. Re-run with --force to overwrite.\n" "$name"
-      skipped=$((skipped + 1))
-      continue
-    fi
+  if [ "$force" -eq 0 ] && [ -e "$target" ] && ! cmp -s "$f" "$target"; then
+    printf "  • %-24s exists with local changes — leaving as-is. Re-run with --force to overwrite.\n" "$name"
+    skipped=$((skipped + 1))
+    continue
   fi
   cp "$f" "$target"
   installed=$((installed + 1))
 done
 
-if [[ "${1:-}" == "--force" ]]; then
-  for f in "$SRC"/*.md; do
-    cp "$f" "$DEST/"
-  done
-  installed=$(ls "$SRC"/*.md | wc -l | tr -d ' ')
-  skipped=0
-fi
-
 echo ""
 echo "✓ Installed $installed skill(s) to $DEST"
-[ "$skipped" -gt 0 ] && echo "  $skipped skipped (already present with local changes; use --force to overwrite)"
+if [ "$skipped" -gt 0 ]; then
+  echo "  $skipped skipped (already present with local changes; use --force to overwrite)"
+fi
 echo ""
 echo "Open Claude Code and type / to see the new commands."
