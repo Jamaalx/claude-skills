@@ -4,6 +4,8 @@
 #   1. every commands/*.md starts with YAML frontmatter that has a non-empty `description:`
 #   2. every commands/*.md is referenced from README.md
 #   3. the skill count stated in README.md matches the number of files in commands/
+#   4. no personal / sensitive data in commands/ and examples/ (see CONTRIBUTING.md):
+#      credential-shaped strings, home-directory paths, real email addresses
 #
 # Exit code is non-zero if any check fails.
 set -euo pipefail
@@ -64,6 +66,27 @@ elif [ "$stated" != "$actual" ]; then
 else
   ok "README says $stated skills, commands/ contains $actual"
 fi
+
+echo "4. Sensitive data"
+SCAN_DIRS=("$CMD_DIR")
+[ -d "$ROOT/examples" ] && SCAN_DIRS+=("$ROOT/examples")
+sens=0
+# Credential-shaped strings (Anthropic/OpenAI, GitHub, AWS, Slack, Google, Supabase PAT, PEM keys).
+secret_re='(sk-(ant-)?[A-Za-z0-9_-]{24,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sbp_[a-f0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+if hits="$(grep -rnoE "$secret_re" "${SCAN_DIRS[@]}")"; then
+  err "credential-shaped string(s):"; printf '%s\n' "$hits" >&2; sens=1
+fi
+# Machine-specific home paths (placeholders like /Users/you or /home/user are fine).
+if hits="$(grep -rnoE '(/Users/|/home/|C:\\Users\\)[A-Za-z0-9._-]+' "${SCAN_DIRS[@]}" \
+    | grep -vE '(/Users/|/home/|Users\\)(you|user|username|me|example|<[^>]*>)$')"; then
+  err "home-directory path(s) — use ~ or a placeholder:"; printf '%s\n' "$hits" >&2; sens=1
+fi
+# Email addresses other than obvious placeholders / public authorities.
+email_allow='@(example\.(com|org|net)|x\.com|bar\.com|foo\.com|test\.com|dataprotection\.ro)$'
+if hits="$(grep -rnoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "${SCAN_DIRS[@]}" | grep -viE "$email_allow")"; then
+  err "email address(es) — use a placeholder such as user@example.com:"; printf '%s\n' "$hits" >&2; sens=1
+fi
+[ "$sens" -eq 0 ] && ok "no credentials, home paths or real email addresses in commands/ or examples/"
 
 if [ "$fail" -ne 0 ]; then
   echo "" >&2
