@@ -40,10 +40,12 @@ If any fails → BLOCK with the first error.
 
 ## CHECK 4: SERVICE-ROLE LEAKAGE (fast)
 
-Grep:
-- `"use client"` files importing anything that references `SUPABASE_SERVICE_ROLE_KEY`.
+Grep (cover both key generations — legacy `service_role` JWT and the new `sb_secret_...` secret keys; env names vary, e.g. `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`):
+- `"use client"` files importing anything that references the service-role / secret key.
 - `app/` and `pages/` top-level pages: no service-role imports.
-- `public/` directory: no `.env` files, no secrets in any JSON/text.
+- `public/` and the built client bundle (`.next/static/`, `dist/`): no `.env` files, no `sb_secret_` or `service_role` strings.
+
+Supabase blocks `sb_secret_` keys on browser requests (401 by User-Agent), but that is a guardrail, not protection — a leaked key still works from any server. Only `sb_publishable_` / legacy `anon` keys belong in client code. (source: https://supabase.com/docs/guides/api/api-keys)
 
 BLOCK on any hit.
 
@@ -54,6 +56,8 @@ BLOCK on any hit.
 Via Supabase MCP `list_tables`:
 - Every table in `public` schema must have `rls_enabled = true`.
 - If any table is new vs the last known-deployed state (compare to migrations history or last git tag), verify RLS + policies exist.
+- New tables also need explicit `GRANT`s to `anon` / `authenticated` / `service_role` in the same migration: since 2026 (new projects from 2026-05-30, all existing projects from 2026-10-30) Supabase no longer auto-grants new `public` tables to the Data API, so a missing grant ships as `42501 permission denied` in prod. Conversely, an unexpected grant to `anon` on a new table is a WARN.
+- Fast cross-check: MCP `get_advisors` (security) — any ERROR-level lint (`rls_disabled_in_public`, `security_definer_view`, `sensitive_columns_exposed`) is a BLOCK. (source: https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically)
 
 BLOCK on any unprotected table.
 
@@ -61,7 +65,7 @@ BLOCK on any unprotected table.
 
 ## CHECK 6: MIGRATIONS
 
-- `supabase/migrations/` (if exists) — any local migrations not yet applied?
+- `supabase/migrations/` (if exists) — any local migrations not yet applied? `supabase migration list` (local vs remote) / `supabase db push --dry-run` show exactly what would run.
 - Via MCP `list_migrations` — pending vs applied.
 - Any migration that does `DROP TABLE`, `DROP COLUMN`, `TRUNCATE`, or `ALTER COLUMN ... TYPE` on a large table → WARN, request explicit confirmation.
 

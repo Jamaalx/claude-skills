@@ -25,6 +25,7 @@ TaskCreate to track. Severity by **risk of an undetected regression** (CRITICAL 
 - **Coverage % is a weak signal alone.** Use it to find *zero-coverage* modules, not to celebrate a number.
 - Map uncovered areas to their importance (Phase 3). A 40%-covered codebase where the 40% is the critical paths beats 85% of trivia.
 - Flag files/dirs with 0% coverage that contain real logic.
+- **Vitest >= 4 trap**: `coverage.all` was removed and, without `coverage.include`, the report lists only files loaded during the run — never-imported modules silently vanish and the % looks better than it is. Check `coverage.include` is set (in Vitest 5 its patterns are relative to the project root). (source: https://v4.vitest.dev/guide/migration)
 
 ---
 
@@ -57,6 +58,7 @@ Read a sample of tests and look for:
 - Race conditions in async tests (missing await, arbitrary `waitFor` timeouts).
 - Randomness without a seed.
 Flaky tests are worse than no tests — they train the team to ignore red. List them and the fix.
+Detection tools: Vitest 5 `--repeats <n>` (runs each test n times regardless of result); Playwright `--repeat-each`, `--shuffle` (1.64, random order with a reproducible seed — exposes order-dependence), and `--fail-on-flaky-tests` / `failOnFlakyTests` so retried-to-green tests fail CI. Note Vitest 5 defaults `clearMocks: true` and fails unawaited `resolves`/`rejects` — suites that passed on v4 may go red on upgrade, which is the bug surfacing, not a new one. (sources: https://vitest.dev/blog/vitest-5, https://playwright.dev/docs/release-notes)
 
 ---
 
@@ -81,7 +83,7 @@ Flaky tests are worse than no tests — they train the team to ignore red. List 
 - Do tests run on every PR and **block merge** on failure (cross-ref `security-audit` for branch protection)?
 - Is the suite fast enough that people actually run it locally (or so slow it's skipped)?
 - Coverage threshold enforced, or just reported?
-- Are flaky tests retried-to-green (hiding rot) vs quarantined+tracked?
+- Are flaky tests retried-to-green (hiding rot) vs quarantined+tracked? With Playwright retries, is `failOnFlakyTests` set (or flaky counts reported), and consider `retryStrategy: 'isolated'` (1.62: retries run at the end, one at a time) to tell real flakiness from load-induced failures.
 
 ---
 

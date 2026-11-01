@@ -5,7 +5,7 @@ allowed-tools: [Bash, Read, Glob, Grep, Edit, Write, Agent, WebSearch, TaskCreat
 
 # RLS & DATABASE AUTHORIZATION AUDIT
 
-You are a database-security engineer auditing the Supabase / Postgres authorization layer. Goal: prove that an attacker with only the `anon` or a regular-user JWT cannot read/write data outside their scope, and cannot escalate privileges by writing to role/permission columns.
+You are a database-security engineer auditing the Supabase / Postgres authorization layer. Goal: prove that an attacker with only the public client key (`sb_publishable_...` or legacy `anon`) or a regular-user JWT cannot read/write data outside their scope, and cannot escalate privileges by writing to role/permission columns.
 
 Run ALL phases. Use Supabase MCP for live checks. Track with tasks. Output a report + write `RLS-FIXES.md` with ready-to-run SQL migrations.
 
@@ -201,6 +201,14 @@ WHERE grantee IN ('anon','authenticated');
 
 Flag any unexpected `INSERT/UPDATE/DELETE` grants to `anon`.
 
+Grants are the first gate (checked before RLS). Supabase stopped auto-granting new `public` tables to `anon` / `authenticated` (new projects from 2026-05-30, all existing projects from 2026-10-30) by revoking the **default privileges**; tables created earlier keep their old blanket grants. So: older tables with full CRUD granted to `anon` and RLS as the only barrier are worth listing, and check what future objects will get:
+
+```sql
+SELECT pg_get_userbyid(d.defaclrole) AS owner, n.nspname AS schema, d.defaclobjtype AS type, d.defaclacl
+FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace;
+```
+(source: https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically)
+
 ---
 
 ## PHASE 7: STORAGE BUCKETS
@@ -221,20 +229,23 @@ Verify each bucket has policies that restrict by `owner = auth.uid()` or path pr
 
 ## PHASE 8: SERVICE-ROLE LEAKAGE
 
-The single most damaging finding. Grep:
+The single most damaging finding. Two key generations exist: legacy JWT keys (`anon`, `service_role`, signed with the project JWT secret) and API keys (`sb_publishable_...`, `sb_secret_...`). Legacy keys are slated for deprecation by end of 2026 and stay valid until disabled in the dashboard — creating new keys does not revoke them. Grep for both:
 
 1. Project codebase:
-   - `SUPABASE_SERVICE_ROLE_KEY` referenced ONLY in server-side files (no `"use client"`, no `app/.../page.tsx` top-level, no `components/`).
+   - `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY` / any `sb_secret_` literal referenced ONLY in server-side files (no `"use client"`, no `app/.../page.tsx` top-level, no `components/`).
    - No `process.env.SUPABASE_SERVICE_ROLE_KEY` inside any file imported by a client component.
    - No service-role key in `next.config.*` exposed via `env` or `publicRuntimeConfig`.
    - `.env*` not committed (also covered by `/security-audit` phase 3 — confirm here).
 2. Git history:
-   - `git log --all -p -- '*.env*' | grep -i service_role` → must be empty.
+   - `git log --all -p -- '*.env*' | grep -iE 'service_role|sb_secret_'` → must be empty.
 3. Built bundle (if `.next/` exists):
-   - `grep -r "service_role" .next/static/` → must be empty.
+   - `grep -rE "service_role|sb_secret_" .next/static/` → must be empty.
 4. Cloudflare / Railway env vars: confirm service role is server-only (no `NEXT_PUBLIC_` prefix).
+5. JWT signing: still on the **legacy shared JWT secret**? Anyone holding it can mint a `service_role` token. Recommend migrating to asymmetric signing keys (ES256 recommended), verifying tokens server-side via `supabase.auth.getClaims()` / the JWKS endpoint instead of the shared secret, then disabling legacy keys and revoking the secret. Flag backend code verifying with `jsonwebtoken`/`jose` + the shared secret — it breaks on rotation.
 
-A leaked service role bypasses RLS entirely — finding it is the speedrun.
+A leaked service role / secret key bypasses RLS entirely — finding it is the speedrun. Use one secret key per backend component so a leak means rotating one key.
+
+(sources: https://supabase.com/docs/guides/api/api-keys, https://supabase.com/docs/guides/auth/signing-keys)
 
 ---
 
@@ -259,7 +270,7 @@ Flag dangerous extensions enabled without need: `dblink`, `postgres_fdw`, `pg_ne
 
 If MCP available:
 
-- `mcp__claude_ai_SupaBase__get_advisors` → include its findings verbatim in the report (it already catches `auth_rls_initplan`, `policy_exists_rls_disabled`, etc.).
+- `mcp__claude_ai_SupaBase__get_advisors` → include its findings verbatim in the report. Security lints most relevant here: `rls_disabled_in_public`, `policy_exists_rls_disabled`, `rls_references_user_metadata` (policy trusts user-editable `raw_user_meta_data`), `permissive_rls_policy` (always-true), `sensitive_columns_exposed`, `security_definer_view`, `anon_` / `authenticated_security_definer_function_executable` (cross-check with Phase 5), `pg_graphql_anon_table_exposed`, `public_bucket_allows_listing`; performance: `auth_rls_initplan`, `multiple_permissive_policies`. Lint list: https://supabase.com/docs/guides/database/database-advisors
 
 ---
 

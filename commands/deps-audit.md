@@ -15,9 +15,10 @@ Run all phases. Use parallel agents for the per-package CVE research. Track prog
 
 Identify package managers in use:
 
-- Node.js: `package.json` + `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock`
-- Python: `requirements.txt`, `pyproject.toml`, `poetry.lock`, `Pipfile.lock`
-- Also note: `bun.lockb`, `composer.json`, `Cargo.toml`, `go.mod`
+- Node.js: `package.json` + `package-lock.json` / `pnpm-lock.yaml` / `yarn.lock` / `bun.lock`
+- Python: `requirements.txt`, `pyproject.toml`, `uv.lock`, `poetry.lock`, `Pipfile.lock`
+- Also note: `bun.lockb` (legacy binary), `composer.json`, `Cargo.toml`, `go.mod`
+- Package-manager version (`npm -v`, `pnpm -v`): npm 12 and pnpm 11 changed install-script and release-age defaults (Phase 4).
 
 For each, list direct dependencies vs transitive. Note which packages are dev-only vs runtime.
 
@@ -35,6 +36,10 @@ npm audit --json
 # Python
 pip-audit -r requirements.txt --format json
 # (install if missing: pip install pip-audit)
+# uv projects: `uv audit` (checks uv.lock against OSV)
+
+# Polyglot / cross-check (OSV-Scanner v2)
+osv-scanner scan -r .            # or: osv-scanner scan -L package-lock.json
 ```
 
 For each finding:
@@ -68,7 +73,14 @@ For each direct dependency, especially low-popularity ones:
 2. **Abandoned / transferred**: WebSearch "<package-name> npm deprecated", "<package-name> taken over", check last publish date. If maintainer transferred ownership recently, flag.
 3. **Malicious install scripts**: grep node_modules for `postinstall`, `preinstall`, `install` in `package.json` of dependencies; flag any that run shell, network, or eval.
 4. **Tiny / single-maintainer / no GH repo**: high-risk.
-5. **Compromised packages**: WebSearch recent npm advisories for any package in our list.
+5. **Compromised packages**: WebSearch recent npm advisories for any package in our list. Since the Shai-Hulud worm (Sept 2025, 500+ packages; second wave Nov 2025) the pattern is a trojanized release of a legitimate package, published from a hijacked maintainer account, running a credential-stealing `postinstall` — check whether any locked version is a known-bad release.
+6. **Install-time hardening** (flag if absent):
+   - npm 12 blocks dependency lifecycle scripts not covered by `allowScripts` in `package.json`; on npm 11, `ignore-scripts=true` in `.npmrc` + explicit allowlist. pnpm 11: `allowBuilds` (replaced `onlyBuiltDependencies`), `strictDepBuilds` on by default.
+   - Release cooldown: pnpm `minimumReleaseAge` (minutes, default 1440 in pnpm 11), npm `min-release-age` (days, npm >= 11.10), uv `exclude-newer` (accepts `7 days`). Lets the community catch a hijacked release before you install it.
+   - pnpm `trustPolicy: no-downgrade` fails if a package's trust level (e.g. trusted-publishing provenance) drops vs earlier releases.
+7. **If this project publishes packages**: npm classic tokens were revoked on 2025-12-09; publish via trusted publishing (OIDC from GitHub Actions / GitLab / CircleCI, npm >= 11.5.1) and set "require 2FA and disallow tokens", else short-lived granular tokens (write tokens max 90 days). Flag any long-lived `NPM_TOKEN` in CI.
+
+Sources: [CISA npm alert 2025-09-23](https://www.cisa.gov/news-events/alerts/2025/09/23/widespread-supply-chain-compromise-impacting-npm-ecosystem), [GitHub npm plan](https://github.blog/security/supply-chain-security/our-plan-for-a-more-secure-npm-supply-chain/), [classic tokens revoked](https://github.blog/changelog/2025-12-09-npm-classic-tokens-revoked-session-based-auth-and-cli-token-management-now-available/), [npm config](https://docs.npmjs.com/cli/v12/using-npm/config), [pnpm settings](https://pnpm.io/settings/dependency-resolution), [npm trusted publishing](https://docs.npmjs.com/trusted-publishers).
 
 ---
 
@@ -102,8 +114,8 @@ If Next.js / Vite / Webpack:
 
 ## PHASE 7: UNUSED & DUPLICATE
 
-- `npx depcheck` — packages declared in `package.json` but not imported anywhere.
-- `npx npm-check-duplicates` or inspect lockfile — same package at multiple versions in tree.
+- `npx knip --dependencies` — packages declared in `package.json` but not imported anywhere (depcheck was archived in June 2025 and points to knip). Python: `deptry .`.
+- `npm find-dupes` (or `pnpm dedupe --check`) or inspect lockfile — same package at multiple versions in tree.
 - For Python: `pip check` for conflicts.
 
 ---
@@ -150,7 +162,7 @@ If React: peer-dep consistency across React Router / Tanstack / etc.
 [heavy packages + lighter alternatives]
 
 ## UNUSED / DUPLICATED
-[depcheck + lockfile duplicates]
+[knip/deptry + lockfile duplicates]
 
 ## AUDIT COVERAGE
 ```

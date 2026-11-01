@@ -13,7 +13,7 @@ You are a database release engineer reviewing one or more pending migrations bef
 
 Identify pending migrations:
 
-- Local `supabase/migrations/*.sql` not yet in `list_migrations` (via MCP).
+- Local `supabase/migrations/*.sql` not yet in `list_migrations` (via MCP), or `supabase migration list` / `supabase db push --dry-run` (CLI).
 - Files modified in current git diff against main.
 - If user provides a specific migration file or block, audit only that.
 
@@ -30,7 +30,7 @@ Flag any of these with CRITICAL severity unless explicitly justified in a commen
 - `DROP INDEX` not `CONCURRENTLY` on a hot table
 - `TRUNCATE`
 - `ALTER COLUMN ... TYPE` (full table rewrite, locks table for the duration)
-- `ALTER TABLE ... SET NOT NULL` without a backfill step
+- `ALTER TABLE ... SET NOT NULL` without a backfill step (it also scans the whole table under ACCESS EXCLUSIVE — see Phase 3)
 - `DELETE FROM` / `UPDATE` without a `WHERE` (or with a sketchy WHERE)
 - `REINDEX` not CONCURRENTLY
 - Renaming a column / table used by application code without a coordinated deploy
@@ -43,14 +43,21 @@ For each: estimate row count via `mcp__claude_ai_SupaBase__execute_sql` (`SELECT
 
 For each `ALTER`/`CREATE`/`DROP`, classify the lock level:
 
-- `ACCESS EXCLUSIVE` (blocks reads + writes): `ALTER TABLE ADD COLUMN ... DEFAULT non_constant`, `ALTER COLUMN TYPE`, `DROP COLUMN`, `ADD CONSTRAINT NOT VALID` (small) then `VALIDATE CONSTRAINT` (long but no AccessExclusive).
+- `ACCESS EXCLUSIVE` (blocks reads + writes): most `ALTER TABLE` forms. Duration is what matters:
+  - with a **table rewrite** (long): `ADD COLUMN ... DEFAULT <volatile>` (e.g. `clock_timestamp()`, `gen_random_uuid()`), stored generated / identity column, `ALTER COLUMN TYPE` (unless binary-coercible, e.g. `varchar`→`text`), `SET NOT NULL` (full scan, no rewrite).
+  - **metadata-only** (instant): `ADD COLUMN` nullable or with a non-volatile default (PG 11+), `DROP COLUMN`, `ADD CONSTRAINT ... NOT VALID`.
+- `SHARE ROW EXCLUSIVE` (blocks writes) on BOTH tables: `ADD FOREIGN KEY` (validated immediately unless `NOT VALID`).
 - `SHARE` (blocks writes): `CREATE INDEX` (without CONCURRENTLY).
-- `ACCESS SHARE` (no real impact): most `CONCURRENTLY` ops.
+- `SHARE UPDATE EXCLUSIVE` (reads + writes continue): `CREATE INDEX CONCURRENTLY`, `VALIDATE CONSTRAINT`.
+
+Even an instant ACCESS EXCLUSIVE op is dangerous if it has to **wait**: while it queues behind a long-running query, every later query on that table queues behind it. Every migration touching a hot table should start with `SET lock_timeout = '3s';` (fail fast, retry) — not set globally in `postgresql.conf`.
 
 For tables > 100k rows: any ACCESS EXCLUSIVE op needs to be rewritten:
-- `ADD COLUMN nullable + backfill in batches + SET NOT NULL` instead of single shot
-- `CREATE INDEX CONCURRENTLY` always
-- `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT` for FK / CHECK
+- `ADD COLUMN nullable + backfill in batches + NOT NULL` instead of single shot. For the NOT NULL step: PG 18+ `ADD CONSTRAINT <name> NOT NULL <col> NOT VALID` then `VALIDATE CONSTRAINT <name>`; on PG <= 17 add `CHECK (<col> IS NOT NULL) NOT VALID`, `VALIDATE` it, then `SET NOT NULL` skips the scan (drop the CHECK after). Check the server version (`select version()`) — hosted Supabase may not be on 18 yet.
+- `CREATE INDEX CONCURRENTLY` always. It **cannot run inside a transaction block** — check whether your migration runner wraps each file in a transaction; if so, isolate it. A failed concurrent build leaves an `INVALID` index that still costs writes: drop it (`DROP INDEX CONCURRENTLY`) before retrying.
+- `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT` for FK / CHECK (PG 18 also allows `NOT VALID` FKs on partitioned tables)
+
+References: [ALTER TABLE (PG 18)](https://www.postgresql.org/docs/18/sql-altertable.html), [CREATE INDEX](https://www.postgresql.org/docs/18/sql-createindex.html), [lock_timeout](https://www.postgresql.org/docs/18/runtime-config-client.html), [PG 18 release notes](https://www.postgresql.org/docs/release/18.0/).
 
 Propose rewrites in the fix kit.
 
@@ -70,6 +77,7 @@ After each migration:
 
 - New tables: `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` present?
 - Policy `CREATE` paired with the new table?
+- Explicit `GRANT`s for the roles that should reach the table via the Data API (`anon` read-only only if public by design; `authenticated` / `service_role` as needed)? Supabase stopped auto-granting new `public` tables (new projects from 2026-05-30, all projects from 2026-10-30) — no grant means `42501 permission denied` before RLS is even evaluated. ([changelog](https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically))
 - Old policies still apply after rename / column drop?
 
 Cross-check via post-apply query (in the fix kit verification):
@@ -106,7 +114,8 @@ For each schema change:
 
 - Migration touches `auth.*` tables? Discouraged; use Auth Hooks or custom tables.
 - Migration uses `SECURITY DEFINER` functions? Verify `SET search_path = pg_catalog, public`.
-- Migration enables a new extension? Confirm available on Supabase and not in deny list.
+- Migration enables a new extension? Confirm available on Supabase and not in deny list; install into `extensions`, not `public` (advisor `extension_in_public`).
+- After applying (branch / staging first), run `get_advisors` (security + performance) and treat new ERROR-level lints as a regression of this migration.
 
 ---
 
@@ -146,7 +155,8 @@ For each problematic migration, provide a rewritten safer version with:
 
 - CONCURRENTLY for index ops
 - Batched UPDATE/DELETE
-- ADD COLUMN nullable + backfill + SET NOT NULL split
+- ADD COLUMN nullable + backfill + NOT NULL (`NOT VALID` + `VALIDATE`) split
+- `SET lock_timeout` at the top of each migration touching a hot table
 - ADD CONSTRAINT NOT VALID + VALIDATE split
 - Pre/post verification queries
 - Application code change coordination notes

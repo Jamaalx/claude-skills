@@ -16,14 +16,15 @@ Removal is risky — anything dynamically imported, used at runtime via string l
 For TypeScript / JavaScript:
 
 ```
-npx knip --reporter json
-# or: npx ts-prune
-# or: npx unimported
+npx knip --files --reporter json          # Knip v6 needs Node >= 20.19
+npx knip --production --files             # only prod entry points (ignores tests/config/devDeps)
+# cross-check: npx ts-prune (exports only); `unimported` and `depcheck` are archived — use knip
 ```
 
 Cross-reference findings:
-- Files reported by all tools → high confidence dead.
-- Files reported by only one tool → manual check.
+- Files reported by knip in both default and `--production` runs + no basename grep hits → high confidence dead.
+- Files reported only in `--production` → used by tests/tooling only; manual check.
+- Knip v6 JSON reporter changed shape (every issue type is an array, root `files` key removed) — update any script that parses it. (sources: https://knip.dev/blog/knip-v6, https://knip.dev/reference/cli, https://github.com/depcheck/depcheck)
 
 Manual sanity checks:
 - Is the file referenced via `dynamic import`, `require(varname)`, or string-based lookup? Grep for the basename.
@@ -35,8 +36,8 @@ Manual sanity checks:
 ## PHASE 2: UNUSED EXPORTS
 
 ```
-npx ts-prune
-# or knip with --include exports
+npx knip --exports
+# or: npx ts-prune
 ```
 
 For each unused export:
@@ -49,11 +50,10 @@ For each unused export:
 ## PHASE 3: UNUSED DEPENDENCIES
 
 ```
-npx depcheck --json
-# Python:
-pip-autoremove --list   # if installed, else manual
-# Cross-check requirements vs imports:
-# rg -t py "^(import|from) (\w+)" | parse package names | compare against requirements
+npx knip --dependencies --reporter json
+# Python (pyproject / uv / poetry / pdm / pip):
+deptry .                # DEP002 = declared but unused, DEP001 = imported but missing
+# Fallback: rg -t py "^(import|from) (\w+)" | parse package names | compare against requirements
 ```
 
 Categorize:
@@ -65,7 +65,7 @@ Categorize:
 
 ## PHASE 4: DEAD CSS / TAILWIND
 
-For Tailwind: it already tree-shakes by default. Check `tailwind.config.*` content globs cover ALL source folders (otherwise true-positive classes look "unused" and get purged in prod — different issue, flag separately).
+For Tailwind: it already tree-shakes by default. v3: check `tailwind.config.*` `content` globs cover ALL source folders. v4: sources are auto-detected (skips `.gitignore`d files and `node_modules`) — check `@source` / `@source not` in the CSS entry cover component libraries and exclude legacy folders. Either way, classes built by string concatenation are never generated (different issue, flag separately). (source: https://tailwindcss.com/docs/detecting-classes-in-source-files)
 
 For non-Tailwind CSS: `npx purgecss --css ... --content ...` then diff to find unused selectors.
 
@@ -187,7 +187,7 @@ Add `DEAD-CODE-FIXES.md` to `.gitignore`. Checklist at top. Self-destruct at bot
 
 ## OPTIONAL: APPLY
 
-Only on `/dead-code fix` and only for HIGH-confidence items in the first pass. Run `npm run build && npx tsc --noEmit` after each batch. Stop on any failure.
+Only on `/dead-code fix` and only for HIGH-confidence items in the first pass. `npx knip --fix --fix-type exports,dependencies` can apply export/dependency removals (files are only deleted with `--allow-remove-files` — don't pass it in the first pass). Run `npm run build && npx tsc --noEmit` after each batch. Stop on any failure.
 
 Never auto-remove API routes or assets without user OK — too easy to break external integrations.
 

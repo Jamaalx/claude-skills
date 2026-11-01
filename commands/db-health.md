@@ -55,6 +55,10 @@ HAVING COUNT(*) > 1;
 -- Inspect from app code: grep ".eq(" / ".filter(" / "WHERE col" for each table and confirm an index exists.
 ```
 
+Before dropping an "unused" index: `idx_scan` counts only since the last stats reset (`SELECT stats_reset FROM pg_stat_database WHERE datname = current_database();`) and only on this node — read replicas keep their own counters.
+
+PG 18+: B-tree **skip scan** lets a multicolumn index serve queries that omit the leading column(s) — before proposing a new index, check with `EXPLAIN` whether an existing composite one is already used.
+
 For each finding, propose a `CREATE INDEX CONCURRENTLY ...` migration.
 
 ---
@@ -77,7 +81,7 @@ LIMIT 20;
 
 If not installed, suggest enabling it.
 
-For top slow queries: get EXPLAIN ANALYZE plan, propose index or query rewrite.
+For top slow queries: get EXPLAIN ANALYZE plan (PG 18 includes `BUFFERS` by default; add it explicitly on older versions), propose index or query rewrite.
 
 ---
 
@@ -94,6 +98,8 @@ LIMIT 20;
 ```
 
 Flag tables with > 20% dead tuples and no recent autovacuum. Suggest manual `VACUUM ANALYZE` and/or tuning `autovacuum_vacuum_scale_factor`.
+
+PG 18+: `pg_stat_user_tables` also has `total_vacuum_time`, `total_autovacuum_time`, `total_analyze_time`, `total_autoanalyze_time` — add them to the query to see which tables autovacuum is spending its time on. Supabase advisors cover this too: `table_bloat`, `autovacuum_disabled`. (source: https://www.postgresql.org/docs/release/18.0/)
 
 ---
 
@@ -128,6 +134,9 @@ WHERE c.relkind='r' AND n.nspname='public'
 -- Boolean / enum columns vs text with check constraint — prefer typed.
 
 -- Timestamp columns without timezone (TIMESTAMP vs TIMESTAMPTZ) — flag.
+
+-- Random UUIDv4 primary keys on large insert-heavy tables scatter index writes;
+-- PG 18 has built-in uuidv7() (time-ordered) — consider for new tables.
 ```
 
 ---
@@ -165,7 +174,7 @@ Tables that already > 1M rows or growing fast: consider partitioning (by date fo
 
 ## PHASE 9: SUPABASE-SPECIFIC
 
-- `get_advisors` (security + performance) — include verbatim.
+- `get_advisors` (security + performance) — include verbatim. Performance/health lints that overlap this audit: `unindexed_foreign_keys`, `unused_index`, `duplicate_index`, `no_primary_key`, `table_bloat`, `autovacuum_disabled`, `auth_rls_initplan`, `multiple_permissive_policies`, `extension_versions_outdated`, `unsupported_reg_types` / `fkey_to_auth_unique` (block Postgres / Auth upgrades). Use them to confirm the SQL findings above, not replace them. (list: https://supabase.com/docs/guides/database/database-advisors)
 - `list_extensions` — anything unnecessary enabled? Anything missing that would help (`pg_stat_statements`, `pg_trgm` for text search)?
 - `list_migrations` — anything pending or duplicated?
 - Realtime publications — tables in `supabase_realtime` publication that don't need to be (perf cost).
