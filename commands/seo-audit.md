@@ -22,6 +22,7 @@ Before auditing, gather current best practices. Search the web for:
 3. **"latest Google algorithm updates 2026"** — any new ranking factors, deprecations, or signals?
 4. **"Google Search structured data updates 2026"** — new supported types, deprecated schemas
 5. **"Next.js 16 SEO features"** (or whatever the latest major version is)
+6. **"Google Search Central documentation updates"** (developers.google.com/search/updates) + **"Google AI Overviews AI Mode site owner guidance"** — removed rich results, new controls, Search Console reports
 
 Summarize what has changed and adapt the audit checklist accordingly. Note any NEW requirements that are not covered in the phases below and add them to the relevant phase.
 
@@ -126,7 +127,7 @@ For every page and layout in the app directory:
 For each page, check for:
 - `og:title` (exists? matches or improves on `<title>`?)
 - `og:description` (exists? compelling for social shares?)
-- `og:image` (exists? proper dimensions?)
+- `og:image` (exists? proper dimensions? Google also uses `og:image` + schema.org image markup to pick Search thumbnails)
 - `og:url` (exists? absolute URL?)
 - `og:type` (exists? correct type — `website`, `article`, `product`?)
 - `og:site_name` (set in root layout?)
@@ -164,11 +165,10 @@ Based on the project type, check for these schemas:
 
 **For SaaS / Business sites:**
 - `Organization` (name, logo, url, sameAs for social profiles)
-- `WebSite` (with `SearchAction` for sitelinks search box)
+- `WebSite` (`name` / `alternateName` for site names; the sitelinks search box was retired 2024-11-21, so `SearchAction` is optional and harmless)
 - `Product` or `SoftwareApplication` (for product/pricing pages)
-- `FAQPage` (for FAQ sections)
 - `BreadcrumbList` (for navigation breadcrumbs)
-- `HowTo` (for tutorial/guide pages)
+- `FAQPage` / `HowTo`: no longer produce Google rich results (HowTo dropped 2023, FAQ stopped showing 2026-05-07). Valid schema.org and harmless; do NOT score their absence as missing
 
 **For HoReCa / Restaurant / Review platforms:**
 - `LocalBusiness` / `Restaurant`
@@ -189,7 +189,8 @@ Based on the project type, check for these schemas:
 ### 4c. Schema Validation
 - Validate JSON-LD syntax (valid JSON, correct @context, correct @type)
 - Check for required properties per schema type
-- Search the web for "Google rich results supported structured data 2026" to verify types are still supported
+- Verify each type against Google's current search gallery (developers.google.com/search/docs/appearance/structured-data/search-gallery). Retired in Google Search: Sitelinks search box (2024-11), Book Actions, Course Info, Claim Review, Estimated Salary, Learning Video, Special Announcement, Vehicle Listing (phased out from 2025-06), Practice problem (docs removed 2026-01), FAQ (2026-05). Flag effort spent on these as low-value, not as errors
+- Structured data must match visible page content (Google's AI features also expect this)
 
 ### 4d. Missing Opportunities
 - Identify pages that SHOULD have structured data but don't
@@ -236,13 +237,13 @@ For every page in the project:
 ### 6c. Image Optimization
 - Images use modern formats (WebP/AVIF) or `next/image` handles conversion
 - No unnecessarily large images (check for images > 500KB)
-- `priority` prop used on above-the-fold images (LCP candidates)
+- LCP/above-the-fold image prioritized: Next.js 16+ `preload` / `loading="eager"` / `fetchPriority="high"` (`priority` is deprecated in 16); Next.js <= 15 `priority`
 - Proper `sizes` attribute on responsive images
 - `width` and `height` set to prevent CLS (Cumulative Layout Shift)
 
 ### 6d. Lazy Loading
 - Below-fold images are lazy loaded (default in `next/image`)
-- Above-fold / hero images are NOT lazy loaded (use `priority` or `loading="eager"`)
+- Above-fold / hero images are NOT lazy loaded (use `loading="eager"` / `fetchPriority="high"`, or `priority` on Next.js <= 15)
 
 ### 6e. Broken Images
 - Check for image `src` paths that reference files that don't exist in the project
@@ -313,7 +314,7 @@ For every page in the project:
 ### 9c. Authentication Gates
 - Check if any public-facing content is behind authentication
 - Verify marketing/landing pages are fully accessible without login
-- Check for middleware redirects that might block crawlers
+- Check for `proxy.ts` (Next.js 16+) / `middleware.ts` redirects, WAF or CDN bot rules that might block Googlebot
 
 ### 9d. JavaScript-Dependent Content
 - Pages with `"use client"` that fetch and render all content client-side
@@ -321,9 +322,17 @@ For every page in the project:
 - Content loaded via client-side API calls that should be server-rendered
 
 ### 9e. Pagination & Infinite Scroll
-- Check for paginated content — does it use proper `<link rel="next/prev">`?
+- Paginated content: each page has a unique URL (e.g. `?page=n`, not `#` fragments), links to the next page with a crawlable `<a href>`, and canonicals to ITSELF (not to page 1). Google no longer uses `rel="next/prev"` (harmless, other engines may)
 - Infinite scroll pages — is content accessible via URL pagination?
 - `loadMore` buttons that hide content from crawlers
+
+### 9f. AI features (AI Overviews / AI Mode)
+- Google: no extra requirements, special schema, or "AI text files" are needed — a page must be indexed and snippet-eligible. Google Search does not use `llms.txt` (fine to keep for other consumers; don't score it)
+- Controls: `nosnippet` / `data-nosnippet` / `max-snippet` / `noindex` limit what is shown; the site-wide "Search generative AI control" in Search Console opts out of AI Overviews / AI Mode; `Google-Extended` in robots.txt does NOT affect Search inclusion
+- AI Overviews / AI Mode traffic is counted in the Search Console Performance report (Web search type) — measure conversions/engagement, not just clicks
+- Note the opt-in/opt-out posture in the report; don't recommend opting out without the owner's decision
+
+References (2026-11 refresh): https://developers.google.com/search/updates · https://developers.google.com/search/docs/appearance/ai-features · https://developers.google.com/search/docs/crawling-indexing/control-what-you-share · https://developers.google.com/search/blog/2025/06/simplifying-search-results · https://developers.google.com/search/blog/2024/10/sitelinks-search-box · https://developers.google.com/search/docs/specialty/ecommerce/pagination-and-incremental-page-loading · https://nextjs.org/docs/app/guides/upgrading/version-16
 
 ---
 

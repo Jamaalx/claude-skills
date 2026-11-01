@@ -26,8 +26,8 @@ Before auditing, establish the current performance benchmarks and best practices
 
 ### 0b. Update your audit checklist based on findings:
 - Note any NEW Core Web Vitals metrics or changed thresholds
-- Note any new Next.js features that supersede old patterns (e.g., Turbopack, PPR, partial prerendering)
-- Note any React 19+ specific optimizations (use(), server functions, etc.)
+- Note any new Next.js features that supersede old patterns (e.g., Turbopack is the default bundler since 16; PPR now lives in Cache Components -- `cacheComponents: true` + `'use cache'` -- recommended for all apps from 16.4 and slated to become the default in 17)
+- Note any React 19+ specific optimizations (use(), server functions, React Compiler auto-memoization, `<Activity>`, `useEffectEvent`, stable `<ViewTransition>` / Fragment refs in 19.3, etc.)
 - Note any deprecated patterns that should be replaced
 
 Record a brief summary of what you found — include it in the final report under "Standards Used".
@@ -43,6 +43,7 @@ npm run build 2>&1
 Capture the FULL output. If the build fails, report the failure and continue with static analysis only.
 
 ### 1b. Analyze build output
+- **Next.js 16+ no longer prints `Size` / `First Load JS`** in `next build` output (removed as inaccurate under RSC). Get per-route JS from the Turbopack Bundle Analyzer (`npx next analyze`, 16.1+; `--output` writes `.next/diagnostics/analyze`) or `@next/bundle-analyzer` (`ANALYZE=true npm run build`) on webpack builds, and confirm with Lighthouse.
 - **Per-route sizes**: For each route, note the JS size and whether it's static (SSG), dynamic (SSR), or ISR
 - **Total First Load JS**: Should be under 100KB. Flag anything over 80KB as a warning, over 120KB as critical.
 - **Largest pages/chunks**: Identify the top 5 heaviest routes and why they are heavy
@@ -66,7 +67,7 @@ Search `package.json` for known heavy libraries and suggest lighter alternatives
 - `axios` → native `fetch` (saves ~13KB, Next.js extends fetch anyway)
 - `classnames` → `clsx` (saves ~2KB)
 - `uuid` → `crypto.randomUUID()` (native, saves ~8KB)
-- `node-fetch` → native `fetch` (available in Node 18+)
+- `node-fetch` → native `fetch` (built into every supported Node LTS; Node 18 EOL 2025-04-30, Node 20 EOL 2026-04-30, Next.js 16 requires Node >= 20.9 -- flag an EOL `engines`/runtime Node as a finding)
 - `animate.css` → CSS animations or Framer Motion (if already used)
 - `font-awesome` → `lucide-react` or `@heroicons/react` (SVG, tree-shakeable)
 - `react-icons` full import → import from specific set `react-icons/fi`
@@ -83,7 +84,7 @@ Search `package.json` for known heavy libraries and suggest lighter alternatives
 - Check for any single chunk over 50KB gzipped (should be code-split)
 
 ### 2b. CSS Bundle Size
-- Check for Tailwind CSS — is purging configured? (content paths in `tailwind.config.js`)
+- Check for Tailwind CSS — v3: are `content` paths in `tailwind.config.js` correct? v4: content is auto-detected (respects `.gitignore`); check `@source` covers external UI packages and nothing huge is scanned
 - Check for unused CSS (global stylesheets imported but partially used)
 - Check for duplicate CSS from component libraries
 - Check total CSS size — should be under 50KB gzipped for initial load
@@ -145,9 +146,9 @@ Pages that are SSR but could be static or ISR:
 - Are `<Suspense>` boundaries used for slow data fetches? (enables partial rendering)
 - Are there heavy server components that block the entire page? (should be wrapped in Suspense)
 
-### 3e. Middleware performance
-- Read `middleware.ts` — is it doing heavy work? (Middleware runs on EVERY request in its matcher)
-- Is middleware doing database queries? (It should NOT — use edge-compatible checks only)
+### 3e. Proxy / middleware performance
+- Read `proxy.ts` (Next.js 16+; Node.js runtime) or legacy `middleware.ts` (deprecated in 16, still needed only for Edge runtime) — is it doing heavy work? (It runs on EVERY request in its matcher)
+- Is it doing database queries? (It should NOT — keep it to cheap cookie/header/token checks)
 - Is the matcher too broad? (e.g., matching all routes when only `/dashboard/*` needs auth)
 - Is middleware doing redirects that could be handled by `next.config.js` redirects? (static is faster)
 
@@ -161,7 +162,7 @@ Search for all image rendering in the codebase:
 - `<Image` from `next/image` — check props:
   - Has `width` + `height` OR `fill` prop? (prevents CLS)
   - Has `alt` text? (accessibility + SEO)
-  - Has `priority` on above-fold hero images? (improves LCP)
+  - LCP/hero image is prioritized? Next.js 16+: `priority` is deprecated -- use `preload` (only when the LCP image is unambiguous), or more often `loading="eager"` / `fetchPriority="high"`; Next.js <= 15: `priority`
   - Has `placeholder="blur"` + `blurDataURL` on large images? (better perceived loading)
   - Has `sizes` prop when using `fill`? (prevents downloading oversized images)
 
@@ -182,7 +183,7 @@ find . -path ./node_modules -prune -o \( -name "*.png" -o -name "*.jpg" -o -name
 
 ### 4d. Lazy loading
 - Are below-fold images using `loading="lazy"` (default in next/image)?
-- Is `priority` set ONLY on the hero/LCP image? (Too many `priority` images defeat the purpose)
+- Is `preload` / `fetchPriority="high"` (or `priority` on Next.js <= 15) set ONLY on the hero/LCP image? (Too many prioritized images defeat the purpose)
 - Are there image carousels loading all images eagerly?
 
 ---
@@ -224,7 +225,7 @@ Check `next.config.js` for custom headers:
 ### 6b. API response caching
 - Check API routes for `Cache-Control` headers
 - Check for `revalidate` in `fetch()` calls (Next.js extended fetch)
-- Check for in-memory caching (e.g., `unstable_cache`, `cache()` from React)
+- Check for in-memory caching (e.g., `cache()` from React; legacy `unstable_cache`; with Cache Components: `'use cache'` + `cacheLife()` / `cacheTag()`, stable since Next.js 16)
 - Check for Redis/Upstash caching on expensive queries
 - Look for `no-store` on fetch calls that COULD be cached
 
@@ -233,7 +234,7 @@ Check `next.config.js` for custom headers:
   - Too low (< 60s) = hammering the server
   - Too high (> 86400) = stale data for users
   - Missing entirely on pages that should have it = fully static or fully dynamic
-- Check for `revalidatePath()` / `revalidateTag()` usage for on-demand revalidation
+- Check for `revalidatePath()` / `revalidateTag()` usage for on-demand revalidation (Next.js 16: single-argument `revalidateTag(tag)` is deprecated -- use `revalidateTag(tag, 'max')` for stale-while-revalidate, or `updateTag(tag)` in Server Actions for read-your-writes)
 
 ### 6d. CDN & edge caching
 - If using Cloudflare: check caching rules via MCP
@@ -456,11 +457,13 @@ Search for `<script>` tags in `_document`, `layout`, or components:
 
 Based on ALL previous analysis, predict the Core Web Vitals scores. For each metric, identify the specific bottleneck.
 
+Thresholds below are the current web.dev values (p75, per device class) -- unchanged since INP replaced FID in 2024; Google announces stable-metric changes in advance (re-check in Phase 0). If you run Lighthouse, note v13+ replaced the legacy performance audits with insight audits (e.g. `lcp-discovery-insight`, `render-blocking-insight`, `document-latency-insight`, `image-delivery-insight`) and needs Node 22.19+; scoring is unchanged but scripts parsing old audit IDs (`render-blocking-resources`, `uses-long-cache-ttl`, ...) break.
+
 ### 10a. LCP (Largest Contentful Paint)
 **Target: < 2.5s** (Good), **2.5-4s** (Needs Improvement), **> 4s** (Poor)
 
 Identify the LCP element for key pages (usually: hero image, main heading, or large text block):
-- Is the LCP image using `priority` prop? (Preloads the image)
+- Is the LCP image prioritized (`preload` / `fetchPriority="high"`; `priority` on Next.js <= 15) and NOT lazy-loaded?
 - Is the LCP element blocked by render-blocking resources? (CSS, fonts, scripts)
 - Is the server response fast? (TTFB directly impacts LCP)
 - Is there a long chain: TTFB → CSS → Font → Render? (Each adds delay)
@@ -586,21 +589,24 @@ Check for FCP blockers:
    - Edge TTL settings
    - Cache hit rate statistics
 
-2. **Minification**:
-   - Auto-minification enabled for JS, CSS, HTML?
-   - Brotli compression enabled?
+2. **Compression & hints**:
+   - Brotli (or Zstandard) compression enabled? (Auto Minify was retired in 2024 -- minify at build time instead)
    - Early Hints enabled? (103 status code for preloading)
 
 3. **Performance features**:
    - Rocket Loader enabled? (async JS loading)
-   - Polish (image optimization) enabled?
-   - Mirage (image lazy loading) enabled?
+   - Polish (image optimization) enabled? (Mirage was deprecated 2025-09-15 -- rely on native `loading="lazy"`)
+   - Speed Brain (Speculation Rules prefetch of likely next navigation) / Cloudflare Fonts considered?
    - HTTP/2 and HTTP/3 enabled?
    - 0-RTT connection resumption?
 
 4. **Edge optimization**:
    - Are there Cloudflare Workers that could cache dynamic content at the edge?
    - Page Rules for performance (cache level, edge TTL)
+
+---
+
+References (2026-11 refresh): https://web.dev/articles/vitals · https://developer.chrome.com/blog/lighthouse-13-0 · https://nextjs.org/docs/app/guides/upgrading/version-16 · https://nextjs.org/blog/next-16-4 · https://nextjs.org/docs/app/guides/package-bundling · https://nextjs.org/docs/app/api-reference/components/image#priority · https://react.dev/blog/2026/09/09/react-19-3 · https://endoflife.date/nodejs · https://developers.cloudflare.com/speed/optimization/images/mirage/
 
 ---
 
@@ -688,7 +694,7 @@ After completing ALL phases, generate this report:
 - Using next/image: [X] / [total]
 - Raw <img> tags: [X] (should be 0)
 - Oversized images: [list]
-- Missing priority on LCP: [list]
+- LCP image not prioritized: [list]
 - Missing dimensions: [list]
 
 ## FONT AUDIT

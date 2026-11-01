@@ -5,7 +5,7 @@ allowed-tools: [Bash, Read, Glob, Grep, Edit, Write, Agent, WebSearch, WebFetch,
 
 # ACCESSIBILITY (a11y) AUDIT — WCAG 2.2 AA
 
-You are an accessibility consultant auditing the client-facing surface of this product for WCAG 2.2 Level AA conformance. This is also EU EAA-relevant (European Accessibility Act, in force 2025-06-28) for ecommerce / banking / consumer-facing services.
+You are an accessibility consultant auditing the client-facing surface of this product for WCAG 2.2 Level AA conformance. This is also EU EAA-relevant (European Accessibility Act, in force 2025-06-28) for ecommerce / banking / consumer-facing services. Its technical standard EN 301 549 V4.1.1 (published 2026-09-02) moves the web baseline to WCAG 2.2 AA; until it is cited in the EU Official Journal (expected 2026-12-16) V3.2.1 / WCAG 2.1 AA is the legal presumption-of-conformity baseline — auditing to 2.2 AA covers both. WCAG 3.0 is still a W3C Working Draft (2026-09) — not a conformance target.
 
 Goal: enumerate barriers, prove them with axe/Lighthouse, and produce `A11Y-FIXES.md` with code-level fixes.
 
@@ -30,12 +30,14 @@ Run for each page:
 
 ```
 # axe-core via puppeteer / playwright
-npx @axe-core/cli <url> --tags wcag2a,wcag2aa,wcag22aa
+# axe tags are NOT cumulative: list every level/version you need
+npx @axe-core/cli <url> --tags wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22aa,best-practice
+# EU/EAA reporting: also run --tags EN-301-549
 # Lighthouse a11y
 npx lighthouse <url> --only-categories=accessibility --output=json
 ```
 
-Note: automated tools catch ~30-40% of issues; the rest require manual review.
+Note: automated tools catch ~30-40% of issues; the rest require manual review. Use a current axe-core (4.14+ enables `label-content-name-mismatch` by default and tags `target-size` for EN 301 549). WCAG 2.2 removed 4.1.1 Parsing — don't report HTML-validity issues under it.
 
 ---
 
@@ -48,6 +50,8 @@ For each interactive page:
 - No keyboard traps (modals reachable IN and OUT with Tab + Esc)?
 - All actions doable without mouse (drag-drop, hover-only menus = barriers)
 - Skip-to-content link present near top of body?
+- Focused element not hidden behind sticky headers, cookie banners, chat widgets (2.4.11 Focus Not Obscured, AA — new in 2.2; use `scroll-padding-top`)
+- Drag-only interactions (sortable lists, sliders, maps) have a single-pointer alternative (2.5.7 Dragging Movements, AA — new in 2.2)
 
 Grep code for:
 - `outline: none` / `outline: 0` without compensating `:focus-visible`
@@ -97,6 +101,7 @@ Use axe / Lighthouse output for contrast; spot-check via DevTools.
 - Required fields marked with both visual (* with legend) and `required` / `aria-required`
 - Autocomplete attributes on standard fields (`autocomplete="email"`, `"tel"`, etc.)
 - Don't disable submit until valid — let it submit and announce errors
+- WCAG 2.2: login/signup has no cognitive test without an alternative — allow paste + password managers, no puzzle-only CAPTCHA (3.3.8 Accessible Authentication, AA); info already entered in the same flow is auto-filled or selectable, not re-typed (3.3.7 Redundant Entry, A); help/contact appears in the same relative place across pages (3.2.6 Consistent Help, A)
 
 ---
 
@@ -131,9 +136,11 @@ Use axe / Lighthouse output for contrast; spot-check via DevTools.
 ## PHASE 10: REGRESSION GATING
 
 Recommend:
-- ESLint `eslint-plugin-jsx-a11y` enabled
-- `@axe-core/react` in dev to surface issues in console
-- Playwright + `axe-playwright` for CI
+- ESLint `eslint-plugin-jsx-a11y` enabled (Next.js 16 removed `next lint` — run the ESLint CLI in CI)
+- Dev-time checks: axe DevTools browser extension / axe Developer Hub (`@axe-core/react` does not support React 18+)
+- Playwright + `@axe-core/playwright` (Deque's official package) for CI, with the same tag set as Phase 2
+
+References (2026-11 refresh): https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/ · https://www.w3.org/TR/wcag-3.0/ · https://nda.ie/news/en301549-published · https://github.com/dequelabs/axe-core/blob/develop/doc/API.md · https://github.com/dequelabs/axe-core/releases · https://github.com/dequelabs/axe-core-npm/tree/develop/packages/react
 
 ---
 
