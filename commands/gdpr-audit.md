@@ -79,7 +79,7 @@ Terms minimum:
 - Price + payment + billing
 - Withdrawal right (14 days for B2C ecommerce — OUG 34/2014)
 - Warranty / refund / SLA
-- Dispute resolution: ANPC + EU ODR for ecommerce
+- Dispute resolution: ANPC / SAL for ecommerce (the EU ODR platform was shut down on 20 July 2025 — Reg. (EU) 2024/3228; remove any leftover ODR link/clause)
 - Governing law
 
 Cross-check with the operator's legal entity data (company name, CUI/VAT, registered office, registration number). If not on file, ask the user.
@@ -134,11 +134,12 @@ For ecommerce / HoReCa apps with public users:
 
 - ANPC banner (resolution links) on every page? (mandatory for ecommerce):
   - https://anpc.ro/ce-este-sal/
-  - https://ec.europa.eu/consumers/odr/
+  - NOT the EU ODR link any more — the platform closed 20 July 2025 (source: https://www.ecc.fi/en/current/press-releases/the-european-online-dispute-resolution-odr-platform-will-be-discontinued-as-of-20-july-2025/); flag a dead ODR link as LOW.
 - "Solutionarea Alternativa a Litigiilor" (SAL) section in terms.
 - Order confirmation includes everything per OUG 34/2014.
 - For fiscal: e-Factura compliance (for B2B), fiscal printer integration (Datecs, etc.).
 - Cookies: ANSPDCP guidance from 2020 requires explicit consent — passive "by using this site you agree" banners are non-compliant.
+- Guest checkout: EDPB Recommendations 2/2025 (consultation draft, Dec 2025) treat mandatory account creation for e-shops as hard to justify — offer guest checkout unless there is a real need for an account.
 
 ---
 
@@ -148,6 +149,15 @@ For ecommerce / HoReCa apps with public users:
 - 72-hour breach notification to ANSPDCP (Art. 33) playbook?
 - Notification template for affected users (Art. 34)?
 - Logging in place to detect breach scope?
+
+---
+
+## PHASE 9: REGULATORY STATUS CHECK (as of 2026-11 — re-verify before citing)
+
+- **Digital Omnibus (GDPR/ePrivacy)** — Commission proposal Nov 2025; Council mandate 21 Oct 2026 (keeps the personal-data definition, cookie rules stay in ePrivacy Art. 5(3), browser-signal duty dropped, breach notice 72h → 96h). Parliament has no position yet: **not law** — audit against the current GDPR (72h) and ePrivacy. (source: https://www.nicfab.eu/en/posts/digital-omnibus-council/)
+- **AI Act** as amended by Reg. (EU) 2026/1744 (in force 27 Jul 2026): Art. 50 transparency applies since **2 Aug 2026** — chatbots must tell users they talk to an AI, AI-generated content must be marked (systems already on the market: until 2 Dec 2026 for Art. 50(2)); high-risk Annex III moved to **2 Dec 2027**, Annex I to 2 Aug 2028. Flag any user-facing AI feature without an AI disclosure. (source: https://eur-lex.europa.eu/eli/reg/2026/1744/oj, https://cdp.cooley.com/digital-ai-omnibus-delays-key-deadlines-introduces-new-rules/)
+- **Data Act** (applies since 12 Sep 2025): a SaaS must let business customers switch and export their data in a machine-readable format; switching/egress charges are banned from **12 Jan 2027**. Check export + contract terms. (source: https://digital-strategy.ec.europa.eu/en/policies/data-act-explained)
+- **EDPB CEF 2026** targets transparency (Art. 12–14) across 25 DPAs — privacy-notice gaps from Phase 3 are the most likely enforcement hit this year. (source: https://www.edpb.europa.eu/news/cef-2026-edpb-launches-coordinated-enforcement-action-on-transparency-and-information_en)
 
 ---
 

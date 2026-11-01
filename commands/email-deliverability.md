@@ -16,7 +16,10 @@ Confirm the sending domain(s) and ESP with the user. TaskCreate to track. Severi
 
 These are no longer "best practice" — they are delivery conditions, and failing them means
 **rejection at SMTP (a bounce), not a trip to the spam folder**. Google and Yahoo enforce since
-Oct 2023, **Microsoft since April 2025**, Apple aligned.
+Feb 2024 (Gmail **ramped up to temporary and permanent rejections from Nov 2025**), **Microsoft
+since 5 May 2025** (junk first, then `550 5.7.515` rejections), Apple aligned.
+(sources: https://support.google.com/a/answer/14229414,
+https://substrate.office.com/ip-domain-management-snds/Postmaster/Policies)
 
 | Requirement | Threshold |
 |---|---|
@@ -29,8 +32,11 @@ Oct 2023, **Microsoft since April 2025**, Apple aligned.
 Two things that are routinely missed:
 - The unsubscribe requirement covers **promotional/subscription mail only**. Password resets, order
   confirmations and shipping notices are **exempt** — do not put an unsubscribe link on them.
-- Once you cross 0.3%, deliverability degrades and **recovers slowly**. The rate is only visible in
-  Google Postmaster Tools; without it you are flying blind.
+- Once you cross 0.3%, deliverability degrades and **recovers slowly** (mitigation eligibility only
+  after 7 consecutive days below 0.3%). The rate is only visible in Google Postmaster Tools; without
+  it you are flying blind.
+- Grep bounce logs for Outlook `550 5.7.515` and Gmail authentication/sender-policy rejections — they
+  mean "failing Phase 0", not "spam content".
 
 Even below 5,000/day, treat these as mandatory: they are the price of admission to the inbox anyway,
 and volume can grow overnight.
@@ -41,6 +47,7 @@ and volume can grow overnight.
 - **SPF** (`TXT v=spf1`): present, includes the real ESP(s), no `+all`, ≤10 DNS lookups, not multiple SPF records.
 - **DKIM**: selector(s) published and valid for the ESP; key length ≥1024 (2048 preferred); signing actually enabled on sent mail.
 - **DMARC** (`_dmarc` TXT): present; **policy** is `quarantine`/`reject` for real protection (a domain stuck on `p=none` forever is unprotected); `rua` (and optionally `ruf`) reporting addresses set; `pct` not silently low.
+- **DMARCbis** — RFC 9989 (Standards Track, 2026; reporting in RFC 9990/9991) obsoletes RFC 7489 + 9091: still `v=DMARC1`; `pct`, `rf`, `ri` removed (`t=y` test mode replaces `pct=0`); `np=` sets policy for non-existent subdomains (recommend `np=reject`); org domain found by DNS tree walk, not the Public Suffix List. Old records keep working — flag `pct<100` as a legacy pattern, not a breakage. (source: https://www.rfc-editor.org/info/rfc9989)
 - **Alignment**: do the SPF/DKIM domains *align* with the From: domain (relaxed/strict)? DMARC passes only on alignment — a common silent failure.
 - Resolve records live (`dig`/DoH) and verify against the actual ESP's required setup.
 
@@ -58,13 +65,13 @@ and volume can grow overnight.
 - **Dedicated vs shared IP** — appropriate for volume (shared is fine at low volume; dedicated needs warmup + steady volume).
 - **Transactional vs marketing separation**: are they sent from **separate subdomains** (e.g. `mail.` for marketing, `notify.`/root for transactional)? Mixing lets a marketing reputation hit also sink password-reset emails — a serious reliability bug.
 - Return-Path / bounce domain configured; custom tracking domain (not a shared ESP one with poor reputation).
-- BIMI (optional) for brand logo + a trust signal (requires DMARC enforcement + often VMC).
+- BIMI (optional) for brand logo + a trust signal: Gmail requires DMARC `p=quarantine`/`reject` at 100% and a VMC (checkmark) or CMC (no trademark needed). (source: https://knowledge.workspace.google.com/admin/security/set-up-bimi)
 
 ---
 
 ## PHASE 4: REPUTATION & BLOCKLISTS
 - Check the sending domain/IP against major blocklists (Spamhaus, etc. — via lookups/WebSearch).
-- **Google Postmaster Tools** set up for domains sending to Gmail (the dominant inbox)? Domain reputation visible?
+- **Google Postmaster Tools** set up for domains sending to Gmail (the dominant inbox)? Use the v2 **Compliance Status** dashboard (auth, alignment, TLS, spam rate, one-click unsubscribe); the v1 Domain/IP reputation dashboards are being retired, so don't build monitoring on them. (source: https://www.braze.com/resources/articles/google-postmaster-tools-v1-interface-retirement)
 - Any history of spam traps / sudden volume spikes that tanked reputation?
 - New domain with no sending history (cold) — flag the need for warmup (Phase 7).
 

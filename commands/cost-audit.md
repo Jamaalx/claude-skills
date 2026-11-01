@@ -37,6 +37,7 @@ Use MCP where possible: Supabase `get_cost`/`get_organization`/usage, Cloudflare
 - **Always-on non-prod**: staging/dev/preview environments running 24/7 that could sleep or be on-demand.
 - **Idle / zombie services**: deployed but unused, old experiments still running, duplicate deployments.
 - **Serverless vs always-on mismatch**: paying for an always-on container for spiky/low traffic (or vice-versa — serverless cold-start cost for steady high traffic).
+- **Billing model drift**: Vercel Functions bill Active CPU + provisioned memory on Fluid compute (since Jun 2025, applied on redeploy) — projects not redeployed / not on Fluid stay on the old wall-clock model; I/O-bound functions (LLM/API waits) are the big winners. (source: https://vercel.com/changelog/lower-pricing-with-active-cpu-pricing-for-fluid-compute)
 
 ---
 
@@ -58,7 +59,9 @@ Use MCP where possible: Supabase `get_cost`/`get_organization`/usage, Cloudflare
 
 ## PHASE 6: LLM / AI TOKEN SPEND (often the sneakiest)
 - **Model over-selection**: using a top-tier model where a cheaper/faster one would do for the task (classification, extraction, short replies). Right-size per call. (Consult the `claude-api` skill for current model tiers/pricing rather than guessing.)
-- **No prompt caching** for repeated large system prompts / RAG context.
+- **No prompt caching** for repeated large system prompts / RAG context. At Anthropic a cache read costs 0.1x base input (less on the newest models), a write 1.25x (5 min) or 2x (1 h) — caching pays off after 1–2 reuses; check the stable prefix comes first and the cache is actually hit (`cache_read_input_tokens` > 0).
+- **No batch API** for non-urgent bulk work (nightly summaries, classification, evals): Anthropic's Batch API is 50% off input and output and stacks with caching.
+- **Pricing modifiers**: region-pinned inference (e.g. Anthropic `inference_geo: "us"` = 1.1x) and premium "fast" modes cost extra — use only where required. (source: https://platform.claude.com/docs/en/about-claude/pricing)
 - **No `max_tokens` cap** / unbounded output; runaway agent loops (cross-ref `llm-security` cost-DoS).
 - **Prompt bloat**: stuffing the whole KB into context every call instead of retrieving; redundant few-shots.
 - **Retries** multiplying token cost; missing rate/cost caps per user.

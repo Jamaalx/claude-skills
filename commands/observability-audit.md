@@ -29,6 +29,7 @@ TaskCreate to track. Severity by **debuggability impact** (CRITICAL = a prod out
 - **Release / version tagging** so you know which deploy introduced an error, and **regression detection** on new releases?
 - **Grouping & noise**: are errors deduped into issues, or is it a firehose nobody triages? Alert fatigue = ignored alerts.
 - Client-side errors captured too (the frontend fails silently otherwise)?
+- **SDK major current?** Sentry JS v10 is built on OpenTelemetry v2 (conflicts with OTel v1 deps elsewhere), dropped FID (move web-vital alerts to INP), moved logs to top-level `enableLogs`, and gates user IP collection behind `sendDefaultPii` (cross-ref `gdpr-audit`). (source: https://docs.sentry.io/platforms/javascript/guides/node/migration/v9-to-v10/)
 
 ---
 
@@ -44,6 +45,7 @@ TaskCreate to track. Severity by **debuggability impact** (CRITICAL = a prod out
 - For multi-service / serverless / edge-heavy systems: distributed tracing (OpenTelemetry) to follow a request across hops?
 - Without it, can you tell *which* hop is slow/failing in a chain? If the architecture is a single monolith, note that tracing may be overkill (don't over-recommend — match the stage, like `architecture-review`).
 - Slow-query / slow-endpoint visibility (cross-ref `db-health` / `perf-audit`).
+- **Semantic-convention maturity**: HTTP conventions are stable (since v1.23) — use them. `gen_ai.*` (LLM/agent/MCP spans) were deprecated in the core repo in v1.42.0 (Jun 2026) and moved to `open-telemetry/semantic-conventions-genai`, still Development with no release: instrument LLM calls (model, tokens, latency, errors) but pin the schema and expect renames. The **profiles** signal is Alpha — don't make it a critical dependency. (sources: https://github.com/open-telemetry/semantic-conventions/releases, https://opentelemetry.io/docs/concepts/signals/profiles/)
 
 ---
 
