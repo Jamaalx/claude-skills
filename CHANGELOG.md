@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 Monthly refreshes are made with the bundled [`/audit-update`](commands/audit-update.md) skill; structural fixes with [`/skills-doctor`](commands/skills-doctor.md).
 
+## [1.4.0] - 2026-11-01
+
+### Changed
+- **audit-update 2026-11** refresh of 25 skills (architecture-review and resilience-audit: no change needed):
+  - `security-audit`: Phase 14 renumbered to OWASP GenAI/LLM Top 10 **2026** + Agentic Top 10 (ASI); A07 mapped to `/auth-audit`; Next.js / RSC RCE advisories (CVE-2025-55182); `sb_secret_` keys in the secret scan; Phase 15 npm changes (classic tokens revoked 2025-12-09, 90-day write tokens, `min-release-age`), 2025-26 worm campaigns, worms persisting via agent/IDE config, provenance is not authorization.
+  - `llm-security`: intro now maps to the 2026 edition (was still "2025") and to the OWASP Top 10 for Agentic Applications; persistent-memory poisoning check (ASI06); MCP spec 2026-07-28 authorization checks for servers the project exposes (RFC 8707 audience, RFC 9728 metadata, no token passthrough, Client ID Metadata Documents).
+  - `api-security`: 2023 edition confirmed current; new check for API6 Sensitive Business Flows; Next.js Server Functions treated as endpoints, `proxy.ts` is not an authz boundary; 2026 Next.js SSRF CVEs.
+  - `auth-audit`: Next.js `proxy.ts` (ex-`middleware.ts`) + proxy-bypass CVEs; Server Actions `Origin: null` CSRF bypass (CVE-2026-27978); Supabase `getClaims()`, new API keys and asymmetric JWT signing keys; NIST SP 800-63B-4 password rules; passkeys at AAL2/AAL3.
+  - `server-hardening`: OpenSSH 10.x (DSA removed, ML-KEM hybrid key exchange default); Ubuntu 26.04 defaults (sudo-rs, chrony NTS); Docker 29 nftables backend; Coolify advisories.
+  - `attack-surface`: cert expiry judged against shrinking lifetimes (CA/B Forum SC-081, Let's Encrypt 45-day plan); OCSP stapling no longer a finding; LE client-auth EKU end; DMARC per RFC 9989 (`t=` replaces `pct`, `np=`).
+  - `selfhost-updates`: self-hosted Supabase versioned releases, Envoy gateway, PG17 default; Coolify v4 stable; PostgreSQL 13/14 EOL dates; MinIO community edition archived; Redis 8 AGPLv3 option / Valkey.
+  - `backup-audit`: Supabase backup/PITR facts corrected per plan (Free has none; PITR add-on needs Small compute); Railway volume backups; restore test via "Restore to a New Project" and its caveats.
+  - `uptime-check`: cert-lifetime-based expiry thresholds, no more Let's Encrypt expiry emails; Stripe and Railway status endpoints fixed.
+  - `perf-audit`: Next.js 16.x (no First Load JS in build output → `next analyze`, Turbopack default, Cache Components, `proxy.ts`, `preload` replaces `priority`, `revalidateTag` signature); React 19.2/19.3; Node 18/20 EOL; Lighthouse 13; Tailwind v4; Cloudflare Auto Minify / Mirage retired.
+  - `seo-audit`: FAQ (2026-05-07), HowTo, sitelinks search box and June 2025 rich results removed from expectations; pagination guidance; new 9f on AI Overviews / AI Mode controls; `preload` in Next.js 16.
+  - `a11y-audit`: EN 301 549 V4.1.1 (WCAG 2.2 baseline); WCAG 3.0 still a Working Draft; axe tags fixed to include WCAG 2.1; WCAG 2.2-only criteria checks; `@axe-core/playwright`, `@axe-core/react` dropped for React 18+, `next lint` removed.
+  - `deps-audit`: `uv.lock` / `bun.lock`, `uv audit`, OSV-Scanner v2; Shai-Hulud; install-script and release-cooldown hardening (npm 12 `allowScripts`, pnpm 11 `allowBuilds` / `minimumReleaseAge`, uv `exclude-newer`); npm trusted publishing; depcheck (archived) → knip / deptry.
+  - `dead-code`: Knip v6 commands; `unimported` / `depcheck` dropped (archived), `deptry` for Python; Tailwind v4 `@source`.
+  - `test-audit`: Vitest 4 removed `coverage.all` (use `coverage.include`); Vitest / Playwright flaky-test options.
+  - `prod-readiness`: `sb_secret_` and legacy `service_role` in bundle; explicit GRANTs since Supabase stopped exposing new tables by default (all projects from 2026-10-30); migration list / dry-run; advisors gate.
+  - `migration-audit`: lock table corrected (CONCURRENTLY = SHARE UPDATE EXCLUSIVE, rewrite vs metadata-only, FK locks, `lock_timeout`); PG18 `NOT NULL ... NOT VALID`; GRANT requirement; advisors after apply.
+  - `rls-audit`: default-privileges change with a `pg_default_acl` query; both Supabase key generations and asymmetric signing keys; advisor lint ids.
+  - `db-health`: stats-reset / replica caveats for "unused" indexes; PG18 skip scan, `EXPLAIN` BUFFERS default, vacuum timing columns, `uuidv7()`; advisor lints.
+  - `observability-audit`: Sentry JS v10 notes (OTel v2, INP, `enableLogs`, `sendDefaultPii`); OTel semconv maturity (HTTP stable, GenAI moved out and still Development, profiles Alpha).
+  - `cost-audit`: Vercel Active CPU applies only after redeploy; Anthropic prompt-caching and Batch API multipliers; regional-inference premium.
+  - `email-deliverability`: Microsoft enforcement date 2025-05-05; Gmail rejections since Nov 2025; DMARC is RFC 9989; BIMI needs enforcement + VMC/CMC; Postmaster Tools v2 compliance dashboard.
+  - `gdpr-audit`: EU ODR link removed (platform closed 2025-07-20); guest-checkout note (EDPB Recs 2/2025); new Phase 9 regulatory status — Digital Omnibus (not law), AI Act Art. 50 + Omnibus delays (Reg. 2026/1744), Data Act switching, EDPB CEF 2026.
+  - `audit-update` / `skills-doctor`: research queries updated (current OWASP editions, Agentic Top 10, MCP authorization, cert lifetimes, npm token/cooldown changes, RFC 9989).
+- README: last audit-update badge and maintenance note → 2026-11.
+
 ## [1.3.1] - 2026-09-24
 
 ### Fixed

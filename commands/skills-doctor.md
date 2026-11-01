@@ -54,7 +54,7 @@ For each skill that references specific framework versions, tools, or APIs:
 
 - WebSearch for the latest stable version of the framework / lib mentioned.
 - If the skill references "Next.js 14 / 15 / etc.", check current major and note migration.
-- WCAG 2.2 → WCAG 3.0 (Working Draft, ~2028; 2.2 stays current)? OWASP Top 10 → newer edition (2025 is out)?
+- WCAG 2.2 → WCAG 3.0 (Working Draft, ~2028; 2.2 stays current)? OWASP Top 10 → newer edition (2025 is out)? OWASP LLM Top 10 → 2026 edition (2026-08)?
 - Supabase Auth → still GoTrue, or migrated?
 - Postgres major bump that changes the queries we suggest?
 - Node LTS line?

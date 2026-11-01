@@ -14,7 +14,7 @@ This skill REFRESHES audit-skill content (checks, thresholds, references). For s
 Search the web for the latest updates in these areas (use WebSearch for each):
 
 ### Security
-- "OWASP Top 10 2026 changes"
+- "OWASP Top 10 next edition status" (current web edition: 2025)
 - "Next.js security advisories [current year]"
 - "Supabase security best practices [current year]"
 - "npm supply chain attacks [current year]"
@@ -25,7 +25,8 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 - "prompt injection mitigation [current year]"
 - "AI agent / tool-use security best practices [current year]"
 - "RAG data exfiltration / multi-tenant vector store security"
-- "MCP server security risks [current year]"
+- "MCP server security risks [current year]" / "MCP specification authorization changelog"
+- "OWASP Top 10 for Agentic Applications (ASI) update"
 
 ### API security (api-security.md)
 - "OWASP API Security Top 10 [current/next edition]"
@@ -42,6 +43,7 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 - "subdomain takeover [current year]"
 - "DMARC / BIMI adoption [current year]"
 - "certificate transparency recon"
+- "CA/B Forum TLS certificate lifetime / Let's Encrypt changes [current year]"
 
 ### Architecture & resilience (architecture-review.md, resilience-audit.md)
 - "software architecture best practices [current year]"
@@ -74,7 +76,7 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 
 ### Email deliverability (email-deliverability.md)
 - "Gmail / Yahoo bulk sender requirements [current year]"
-- "DMARC enforcement / BIMI [current year]"
+- "DMARC enforcement / BIMI [current year]" (DMARC is RFC 9989 since 2026)
 - "one-click unsubscribe List-Unsubscribe-Post [current year]"
 
 ### SEO
@@ -106,13 +108,14 @@ Search the web for the latest updates in these areas (use WebSearch for each):
 
 ### RLS / Database
 - "Supabase RLS best practices [current year]"
-- "Postgres 17 / 18 RLS changes"
+- "Postgres 18 / next major RLS changes"
 - "supabase_realtime RLS"
 
 ### Dependencies / Supply chain
 - "npm supply-chain attacks [current year]"
 - "pip-audit vs safety latest"
 - "knip / depcheck updates"
+- "npm token / trusted publishing / min-release-age changes [current year]"
 
 ### Accessibility
 - "WCAG 3.0 working draft status" / "WCAG 2.2 still current standard"
