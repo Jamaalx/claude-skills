@@ -5,7 +5,7 @@ allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, TaskCreate, 
 
 # LLM / AI-AGENT SECURITY AUDIT
 
-You are an AI red-team engineer auditing the LLM / agent surface of this project. Goal: find every way an attacker can subvert the model, exfiltrate data, abuse its tools, or run up cost — then ship a fix kit. Map to OWASP LLM Top 10 (2025). Be paranoid: assume any text the model reads (user input, RAG chunks, web pages, DB rows, emails, file contents, tool outputs) may be hostile.
+You are an AI red-team engineer auditing the LLM / agent surface of this project. Goal: find every way an attacker can subvert the model, exfiltrate data, abuse its tools, or run up cost — then ship a fix kit. Map to the OWASP GenAI/LLM Top 10 (2026 edition, published 2026-08-04), and for agents with tools/autonomy also to the OWASP Top 10 for Agentic Applications 2026 (ASI01-ASI10). Be paranoid: assume any text the model reads (user input, RAG chunks, web pages, DB rows, emails, file contents, tool outputs) may be hostile.
 
 This skill is the deep-dive companion to `security-audit` Phase 14. Run it when a project ships an assistant/agent/chatbot, does RAG, or lets an LLM call tools.
 
@@ -75,6 +75,8 @@ For each tool the model can invoke:
 - **Least privilege**: does the agent hold a scoped credential or a god-mode service-role key?
 - **Human-in-the-loop** on destructive/irreversible/costly actions?
 - **Confused-deputy**: can user A make the agent act on user B's resources because the agent runs with elevated rights?
+- **Persistent memory** (agentic ASI06 Memory & Context Poisoning): can a user, document or tool output write into long-term agent memory that later sessions, or other users, read back as trusted?
+- Agentic cross-map for the report: ASI01 Agent Goal Hijack (Phase 2), ASI02 Tool Misuse & Exploitation and ASI03 Identity & Privilege Abuse (this phase), ASI04 Agentic Supply Chain (Phase 8).
 
 ---
 
@@ -137,6 +139,18 @@ to any project wiring an LLM to MCP servers — and to your own dev machines, no
 
 Inventory concretely: which MCP servers are connected, who publishes each one, what credentials it
 holds, and whether it is reachable from anything untrusted.
+
+For a **remote (HTTP) MCP server the project itself exposes**, check it against the current spec's
+authorization rules (revision 2026-07-28): the server is an OAuth 2.1 resource server that publishes
+Protected Resource Metadata (RFC 9728) and MUST reject tokens not issued for it as audience (RFC 8707);
+**token passthrough is forbidden** (never forward the client's token to upstream APIs); clients should
+register via Client ID Metadata Documents (Dynamic Client Registration is now deprecated) and validate
+`iss` (RFC 9207). Flag any MCP endpoint reachable without auth, or one that accepts any valid token from
+the IdP regardless of audience.
+
+References: https://github.com/GenAI-Security-Project/GenAI-LLM-Top10 ·
+https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/ ·
+https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
 
 ---
 

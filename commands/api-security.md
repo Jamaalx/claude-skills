@@ -5,7 +5,7 @@ allowed-tools: [Bash, Read, Glob, Grep, Agent, WebSearch, WebFetch, TaskCreate, 
 
 # API SECURITY AUDIT (OWASP API Top 10)
 
-You are an API penetration tester auditing this project's API surface. Web-app OWASP ≠ API OWASP — APIs fail differently (object-level authz, mass assignment, resource exhaustion). Map every finding to the **OWASP API Security Top 10 (2023)**. Covers REST, GraphQL, tRPC, Next.js route handlers, Supabase edge functions, and any serverless endpoints.
+You are an API penetration tester auditing this project's API surface. Web-app OWASP ≠ API OWASP — APIs fail differently (object-level authz, mass assignment, resource exhaustion). Map every finding to the **OWASP API Security Top 10 (2023)** — still the current edition as of late 2026 (https://api-security.owasp.org/). Covers REST, GraphQL, tRPC, Next.js route handlers, Supabase edge functions, and any serverless endpoints.
 
 This is the deep companion to `security-audit` Phase 11. Run it for API-heavy projects (REST/GraphQL backends, headless services, BFFs, any project where the API is the product).
 
@@ -20,6 +20,7 @@ Run all phases, TaskCreate to track, parallel agents for independent reads. Repo
 2. For each: method, path, auth required?, authz checked?, input schema?, output shape, rate-limited?
 3. **Shadow / zombie endpoints**: old `/v1` still live next to `/v2`? Debug/test/admin routes? Internal endpoints reachable externally? Undocumented routes?
 4. Is there an OpenAPI/GraphQL schema, and does it match reality (no more, no less)?
+5. Next.js: every Server Function (`'use server'`) is a public POST endpoint — inventory them like routes. `proxy.ts` (renamed from `middleware.ts` in Next.js 16) is not an authz boundary: a matcher change can silently drop coverage, and 2026 brought several Proxy-bypass CVEs. Each handler/action checks auth itself (source: https://nextjs.org/docs/app/api-reference/file-conventions/proxy).
 
 ---
 
@@ -64,6 +65,7 @@ The most common and most severe API flaw.
 - File uploads: size + count + type limits?
 - Expensive ops (export, report, search, fan-out) gated/queued?
 - Cost-amplification: endpoints that trigger paid 3rd-party calls (SMS, email, LLM) without caps?
+- **API6 — Unrestricted Access to Sensitive Business Flows**: flows that are harmless per request but harmful when automated (signup/referral bonus, checkout of limited stock, booking/reservation hold, comment/review posting, coupon redemption). Is there bot/velocity protection per flow (device fingerprint, CAPTCHA/Turnstile, per-account quotas), not just a generic rate limit?
 
 ---
 
@@ -80,6 +82,7 @@ The most common and most severe API flaw.
 - **SSRF**: any endpoint that fetches a user-supplied URL (webhooks, image proxy, link preview, import-from-URL, PDF render)? Can it hit `169.254.169.254` (cloud metadata), internal IPs, `localhost`, `file://`? Allowlist enforced?
 - Injection: SQL/NoSQL/command/LDAP from API params; ORM raw queries; Supabase `.rpc()`/`.filter()` with raw user strings.
 - Header injection, CRLF, host-header trust.
+- Framework-level SSRF: Next.js shipped SSRF fixes in 2026 for Image Optimization (CVE-2026-94483), rewrites with attacker-controlled hostnames (CVE-2026-64645), Server Actions on custom servers (CVE-2026-64649) and WebSocket upgrades (CVE-2026-44578). Check the installed `next` version against https://github.com/vercel/next.js/security.
 
 ---
 

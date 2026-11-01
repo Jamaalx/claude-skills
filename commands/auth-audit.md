@@ -16,7 +16,7 @@ Run ALL phases below. Use parallel agents where independent. Track progress with
 1. Identify the auth stack:
    - Supabase Auth (GoTrue), Auth.js / NextAuth, Lucia, Clerk, Firebase, custom, etc.
    - Cookie-based session vs JWT-in-storage vs hybrid
-   - SSR/middleware (Next.js middleware, Express, etc.)
+   - SSR/middleware (Next.js `proxy.ts` — named `middleware.ts` before Next.js 16 — Express, etc.)
 2. Locate every file involved in auth:
    - login / signup / logout / password reset / magic link / OAuth callback
    - middleware (route protection)
@@ -50,7 +50,7 @@ Check session lifecycle:
 For Supabase / @supabase/ssr:
 
 - `createServerClient` and `createBrowserClient` properly separated?
-- `getUser()` used for validation (NOT `getSession()` alone)?
+- Server-side checks use `getClaims()` (verifies the JWT signature; locally against the JWKS with asymmetric signing keys) or `getUser()` (network call, when fresh user data is needed) — NEVER trust `getSession()` in server code or the proxy, its cookie can be forged.
 - Cookies refreshed correctly in middleware (`supabaseResponse` rebuilt on `setAll`)?
 - No mixing of client/server clients in the same module.
 
@@ -61,12 +61,13 @@ For Supabase / @supabase/ssr:
 - Rate limiting on login endpoint? (`@upstash/ratelimit`, `next-rate-limit`, custom). Per-IP AND per-account.
 - Brute-force lockout after N failed attempts?
 - Constant-time password comparison (bcrypt / argon2 / scrypt — never MD5/SHA1/plain)?
+- Password policy per NIST SP 800-63B-4 (final, July 2025): min 15 chars when the password is the only factor (8 if only used with MFA), allow at least 64, NO composition rules, NO forced periodic rotation, SHALL check against a breached/common-password blocklist (source: https://pages.nist.gov/800-63-4/sp800-63b.html).
 - Generic error message (don't leak "user does not exist" vs "wrong password")?
 - CAPTCHA / hCaptcha / Turnstile on repeated failures or signup?
 - Email enumeration protection on signup, password reset, OAuth link.
 - Login response: no PII, no JWT in body for cookie-based flows.
 - Redirect after login validates `redirectTo` against allowlist (open-redirect check).
-- Login form CSRF-protected (token / SameSite cookie / Origin check).
+- Login form CSRF-protected (token / SameSite cookie / Origin check). Next.js Server Actions rely on an Origin check that treated `Origin: null` as missing until CVE-2026-27978 (GHSA-mq59-m269-xvcx) — patch, and never allowlist `'null'` in `serverActions.allowedOrigins`.
 
 ---
 
@@ -81,7 +82,8 @@ For Supabase / @supabase/ssr:
 
 ## PHASE 5: TOKEN HANDLING
 
-- Service role / admin keys NEVER in client bundle. Grep every `"use client"` file and `public/` for service-role patterns.
+- Service role / admin keys NEVER in client bundle. Grep every `"use client"` file and `public/` for service-role patterns and Supabase secret keys (`sb_secret_`).
+- Supabase: prefer the new publishable/secret API keys and asymmetric JWT signing keys (ES256) over the legacy JWT-based `anon`/`service_role` keys and shared JWT secret, which Supabase is deprecating by end of 2026; one secret key per backend component, rotate signing keys at least yearly (sources: https://supabase.com/docs/guides/api/api-keys, https://supabase.com/docs/guides/auth/signing-keys).
 - No JWT in `localStorage` / `sessionStorage` if using cookie sessions (XSS risk).
 - API tokens (SERVICE_API_KEY etc.) compared with constant-time function (`timingSafeEqual`), not `===`.
 - JWTs (if used) signed with strong secret (>= 256 bits), no `alg: none`, expiration enforced.
@@ -102,7 +104,7 @@ The 15-minute-speedrun checklist. Be ruthless here.
 3. **IDOR**: every endpoint with `id` in URL or body — does it verify the resource belongs to the user? Grep for `.eq("id", ...)` without `.eq("user_id", auth.user.id)`.
 4. **Permission check coverage**: every API route under `app/api/**` and every server action must call `requireAuth` (and `requireEdit` / role check for mutations). List endpoints that DON'T.
 5. **Admin-only routes**: do they actually check `role === 'admin'`? Or just `requireAuth`?
-6. **Middleware bypass**: if route-protection is in middleware, can a path be crafted to evade the matcher (`/api/` vs `/api`, trailing slash, encoded chars)?
+6. **Middleware / Proxy bypass**: if route-protection is in middleware/proxy, can a path be crafted to evade the matcher (`/api/` vs `/api`, trailing slash, encoded chars)? Check the installed `next` against known bypasses — CVE-2025-29927 (`x-middleware-subrequest` header), and 2026's CVE-2026-44573/44574/44575/45109 (i18n, dynamic-param injection, segment-prefetch) and CVE-2026-64642 (Turbopack single-locale); see https://github.com/vercel/next.js/security. Proxy is a first filter only: re-check auth in every route handler and Server Function.
 7. **Frontend-only checks**: any feature that's "hidden" only by UI conditional but the underlying API endpoint accepts the request unauthenticated.
 8. **GraphQL / tRPC**: introspection disabled in prod? Every procedure has `protectedProcedure` / auth middleware?
 
@@ -135,7 +137,7 @@ The fragile-middleware checklist (this is where users get randomly logged out an
 
 ## PHASE 9: MFA & STEP-UP
 
-- MFA available for admin accounts? (TOTP, WebAuthn / passkeys)
+- MFA available for admin accounts? (TOTP, WebAuthn / passkeys — phishing-resistant; under SP 800-63B-4 synced passkeys are fine up to AAL2 but SHALL NOT be used at AAL3)
 - Sensitive operations (delete account, change email, change role) require re-auth or step-up?
 - Recovery codes generated, displayed once, stored hashed?
 
@@ -202,7 +204,7 @@ Also check Supabase Auth project settings (note these in the report; cannot read
 - Session timebox / inactivity: set if needed
 - Allowed redirect URLs: tight
 - Email confirmation required
-- Password min length and strength rules
+- Password min length and strength rules (NIST 800-63B-4: 15+ single-factor, no composition rules) + leaked-password protection on
 - MFA enabled at project level
 
 ---
