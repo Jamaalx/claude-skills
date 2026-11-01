@@ -14,7 +14,7 @@ You are an SRE auditing backup posture. Goal: confirm that if production dies to
 Identify every system holding state that would hurt to lose:
 
 - Supabase projects (DB + storage + auth)
-- Railway services (any volumes / persistent state)
+- Railway services (any volumes / persistent state) — check each volume's Backups tab: daily (kept 6 days) / weekly (27 days) / monthly (89 days) schedules; backups are deleted if the volume is wiped and restore only within the same project + environment, so keep an off-platform dump too (source: https://docs.railway.com/reference/backups)
 - Hetzner servers (filesystems, Docker volumes, Coolify state)
 - GitHub repositories
 - Cloudflare config (DNS, Workers, R2)
@@ -34,10 +34,12 @@ Via MCP:
 - Edge functions: source in git? (deployed = backed up via redeploy capability)
 - Storage buckets: are uploads also stored elsewhere or only here?
 
-Note Supabase tier limits:
-- Free: 7 day backup retention, no PITR.
-- Pro: 7 days PITR.
-- Team / Enterprise: longer.
+Note Supabase tier limits (source: https://supabase.com/docs/guides/platform/backups):
+- Free: no managed backups to rely on and no PITR — export regularly yourself (`supabase db dump`) to off-site storage. Treat a Free project with no dump job as **no backup**.
+- Pro: 7 days of daily backups. Team: 14 days. Enterprise: up to 30 days.
+- PITR: paid add-on on Pro/Team/Enterprise, needs at least the Small compute add-on, 7/14/28-day retention; once enabled, daily backups stop (PITR replaces them).
+- **Storage objects are NOT in database backups** on any plan — bucket files need their own copy (S3 sync/rclone to off-site).
+- Deleting a project deletes its backups irreversibly; a restore makes the project unavailable while it runs.
 
 For each project, the verdict: can you restore to T-1h? T-24h? T-7d?
 
@@ -94,7 +96,7 @@ If MCP available:
 
 The thing nobody does. For each backup destination, when was the last successful test restore?
 
-- Supabase: branch from a PITR restore point into a new project, verify data, delete the branch.
+- Supabase: "Restore to a New Project" (paid plans, physical backups enabled; with PITR pick an exact timestamp), verify data, delete the project. It does NOT copy storage objects, Edge Functions, auth settings / API keys, Realtime settings or extension settings, and `pg_cron`/`pg_net` jobs start running immediately in the copy — disable outbound side effects first (source: https://supabase.com/docs/guides/platform/clone-project).
 - Coolify volume: restore to a scratch path, diff against live.
 - Git repo: clone from the mirror, build, run.
 

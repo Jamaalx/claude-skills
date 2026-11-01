@@ -30,7 +30,7 @@ Discover what's actually running (live if authorized, else hand the user the com
 
 Build a component table: **name | how it's run (container/apt/binary) | image/tag or version string | role**.
 
-Common components to expect & name explicitly: **Coolify**, **self-hosted Supabase** (postgres, gotrue/auth, postgrest, realtime, storage-api, kong, studio, supavisor/pooler, vector, imgproxy), **Netdata**, **PostgreSQL** engine, **Redis/Valkey**, **Traefik / Caddy / Nginx**, **n8n**, **Gitea**, **Grafana / Prometheus**, **MinIO**, **MySQL/MariaDB**, **RabbitMQ**, message brokers.
+Common components to expect & name explicitly: **Coolify**, **self-hosted Supabase** (postgres, gotrue/auth, postgrest, realtime, storage-api, API gateway — Envoy `api-gw` by default since self-hosted v0.8.0, older stacks still on Kong — studio, supavisor/pooler, vector, analytics/logflare, imgproxy, edge-runtime), **Netdata**, **PostgreSQL** engine, **Redis/Valkey**, **Traefik / Caddy / Nginx**, **n8n**, **Gitea**, **Grafana / Prometheus**, **MinIO**, **MySQL/MariaDB**, **RabbitMQ**, message brokers.
 
 ---
 
@@ -46,7 +46,8 @@ For each component, get the precise installed version — a tag like `:latest` i
 For each component, find the current latest-stable release (WebSearch / WebFetch authoritative sources):
 - GitHub Releases API: `https://api.github.com/repos/<org>/<repo>/releases/latest` (Coolify=`coollabsio/coolify`, Netdata=`netdata/netdata`, n8n=`n8n-io/n8n`, Gitea, Grafana, etc.).
 - Docker Hub / GHCR tags for image-based components.
-- Supabase self-hosted: check the official self-hosting release notes / `supabase/supabase` for the recommended stack versions (the stack moves together — don't bump one service blindly).
+- Supabase self-hosted: the Docker stack now ships tagged releases (`self-hosted/vX.Y.Z` in `supabase/supabase`) with `docker/CHANGELOG.md` (security fixes, one-way migrations, required config-file updates) and `docker/versions.md` (per-release image versions for rollback). Compare the user's `docker-compose.yml` image tags to the latest release (the stack moves together — don't bump one service blindly).
+- Coolify: v4 is stable since v4.0.0 (2026-04-27) and patches several minor lines in parallel; check https://github.com/coollabsio/coolify/security/advisories for the installed version (2026 brought many authenticated-RCE / cross-team IDOR fixes).
 - Compute the gap: same / patch behind / minor behind / **major behind**.
 
 ---
@@ -63,7 +64,8 @@ For each component, find the current latest-stable release (WebSearch / WebFetch
 Running past-EOL software = no more security patches = latent CRITICAL.
 - Use **endoflife.date** (great canonical source): `https://endoflife.date/api/<product>.json` (e.g. `postgresql`, `redis`, `ubuntu`, `debian`, `nodejs`, `nginx`, `traefik`, `grafana`). Compare installed major against supported/EOL dates.
 - Flag: already-EOL (CRITICAL), EOL within ~6 months (HIGH — plan now), supported (OK).
-- Postgres major version EOL is the classic one — a major upgrade is a project, not a `docker pull`; plan it early.
+- Postgres major version EOL is the classic one — a major upgrade is a project, not a `docker pull`; plan it early. (PostgreSQL 13 went EOL 2025-11-13, 14 goes EOL 2026-11-12.)
+- Not EOL but **unmaintained / relicensed** also counts: MinIO community edition stopped publishing images/binaries (Oct 2025) and its repo was archived (Apr 2026) — no more security fixes, plan a replacement. Redis 8+ is AGPLv3 / RSALv2 / SSPLv1 (Redis 7.4 was source-available only); Valkey is the BSD-licensed fork — note licence, don't treat it as a vulnerability.
 
 ---
 
@@ -71,7 +73,7 @@ Running past-EOL software = no more security patches = latent CRITICAL.
 For each recommended update, read the release notes / changelog between installed → target:
 - Breaking changes, required migration steps, config-format changes, removed features.
 - **Multi-step upgrades**: some tools won't jump N majors at once (Postgres needs `pg_upgrade`/dump-restore; some apps require stepping through intermediate majors). Note the required path.
-- Supabase self-hosted: the services are version-matched — identify the coordinated target set, not à-la-carte bumps.
+- Supabase self-hosted: the services are version-matched — identify the coordinated target set, not à-la-carte bumps. Postgres 17 is the default since self-hosted v0.6.0 (2026-06-17): never start the PG17 image on a PG15 data directory — follow the official PG17 upgrade guide. Read the CHANGELOG for one-way migrations (e.g. Storage in v0.8.3 can't be rolled back) and for deprecated overrides (Kong, the MinIO `s3` override, PG15) before upgrading.
 - Coolify: has its own self-update flow; note current vs target and whether a DB/schema migration runs.
 - Data-bearing upgrades (Postgres, Redis with persistence, MinIO) → **backup first** (cross-ref `backup-audit`); for Postgres schema/major steps also cross-ref `migration-audit`.
 
@@ -111,6 +113,8 @@ For each component, the concrete update mechanism:
 ```
 
 Every component: installed vs latest, whether the gap is **security/EOL-urgent** or just-behind, and the upgrade path with caveats. Be explicit when something is *fine as-is* — the goal is signal, not "update everything."
+
+References: https://endoflife.date · Supabase self-hosted changelog https://github.com/supabase/supabase/blob/master/docker/CHANGELOG.md · Coolify advisories https://github.com/coollabsio/coolify/security/advisories · Redis licensing https://redis.io/blog/agplv3/ · MinIO https://github.com/minio/minio (archived)
 
 ---
 

@@ -26,8 +26,8 @@ Collect (run live if authorized, else hand the user the commands):
 - Pending updates: `apt list --upgradable 2>/dev/null | head`, unattended-upgrades status
 - Listening sockets (the real external surface): `ss -tulpenH` (note bind address — `0.0.0.0`/`::` = public, `127.0.0.1` = local-only)
 - Running services: `systemctl list-units --type=service --state=running`
-- Users with login shells: `getent passwd | grep -v nologin`; sudoers; last logins `last -n 20`
-- Docker presence: `docker ps`, `docker info`
+- Users with login shells: `getent passwd | grep -v nologin`; sudoers (`sudo --version` — Ubuntu 26.04 ships `sudo-rs` as default `sudo`, classic sudo is `sudo.ws`, `sudo-ldap` is gone); last logins `last -n 20`
+- Docker presence: `docker ps`, `docker info` (Engine version); OpenSSH version: `ssh -V`
 
 ---
 
@@ -37,8 +37,8 @@ Inspect `/etc/ssh/sshd_config` (+ `sshd_config.d/*`):
 - `PasswordAuthentication` → `no` (keys only); `PubkeyAuthentication yes`.
 - `Port` — non-default reduces noise (defense-in-depth, not a real control).
 - `AllowUsers`/`AllowGroups` allowlist; `MaxAuthTries` low; `LoginGraceTime` short.
-- `PermitEmptyPasswords no`; modern KexAlgorithms/Ciphers/MACs only.
-- `authorized_keys`: any unexpected/old keys? key types (no DSA, prefer ed25519).
+- `PermitEmptyPasswords no`; modern KexAlgorithms/Ciphers/MACs only. OpenSSH 10.0+ defaults to post-quantum `mlkem768x25519-sha256` and drops finite-field `diffie-hellman-group*` from sshd's defaults; 10.1+ clients warn on non-PQ key exchange (`WarnWeakCrypto`). Flag configs that pin an old `KexAlgorithms` list (it overrides the PQ default) and sshd older than 9.0 (no PQ kex at all). Check with `sshd -T | grep -i kex`.
+- `authorized_keys` / host keys: any unexpected/old keys? key types (DSA is removed in OpenSSH 10.0 — leftover `ssh-dss` keys stop working on upgrade; prefer ed25519).
 - Is fail2ban or sshguard protecting sshd? Check brute-force log volume: `journalctl -u ssh --since "24h ago" | grep -ci failed`.
 
 ---
@@ -47,7 +47,7 @@ Inspect `/etc/ssh/sshd_config` (+ `sshd_config.d/*`):
 - ufw: `ufw status verbose` — default-deny inbound? Only intended ports open?
 - nftables/iptables: `nft list ruleset` / `iptables -S` if ufw absent.
 - **Cross-check Phase 1 listening sockets vs firewall**: a service on `0.0.0.0` with no firewall rule = exposed. Common offenders on a Coolify box: Postgres 5432, Supabase services, Redis 6379, Docker API 2375/2376, internal dashboards.
-- **Docker bypasses ufw**: `docker run -p` writes DNAT rules that ufw does NOT see. Any published container port is internet-reachable even if ufw "denies" it. Flag every `-p 0.0.0.0:...` that should be `127.0.0.1:...` or behind the proxy.
+- **Docker bypasses ufw**: `docker run -p` writes DNAT rules that ufw does NOT see. Any published container port is internet-reachable even if ufw "denies" it. Flag every `-p 0.0.0.0:...` that should be `127.0.0.1:...` or behind the proxy. Docker Engine 29 adds an opt-in, experimental nftables backend (`--firewall-backend=nftables`); if enabled, custom `DOCKER-USER` iptables rules no longer apply and must be migrated — check which backend is active before trusting them.
 - Cloud/provider firewall in front (Hetzner Robot/Cloud firewall, security groups)? Note it as an additional layer.
 - IPv6: rules cover `ip6` too?
 
@@ -71,13 +71,13 @@ For each container (`docker ps`, `docker inspect`):
 - Reverse proxy (Traefik/Caddy/Nginx): HTTPS enforced, HTTP→HTTPS redirect, modern TLS (1.2+), HSTS, valid auto-renewed certs.
 - No service published directly bypassing the proxy.
 - Webhook/deploy endpoints authenticated.
-- Coolify + Docker kept updated (known-CVE check via WebSearch for current advisories).
+- Coolify + Docker kept updated. Coolify v4 (stable since April 2026) has had dozens of 2025-2026 advisories (authenticated host RCE via command injection, cross-team IDOR, terminal/websocket authz) — compare the installed version against https://github.com/coollabsio/coolify/security/advisories; any team member account on an old version is effectively root on every managed server.
 
 ---
 
 ## PHASE 6: OS HARDENING & PATCHING
 - `unattended-upgrades` enabled for security updates? Auto-reboot window sane?
-- Time sync (chrony/systemd-timesyncd) — needed for cert/log validity.
+- Time sync (chrony/systemd-timesyncd) — needed for cert/log validity. Ubuntu 26.04 installs chrony with NTS (authenticated time) by default; upgraded hosts keep timesyncd unless migrated.
 - World-writable files / SUID surprises: `find / -perm -4000 -type f 2>/dev/null` (note unexpected ones).
 - Sysctl: `net.ipv4.conf.all.rp_filter`, disable IP forwarding if not a router (Docker needs it — note the tension), `kernel.dmesg_restrict`.
 - Swap/secrets on disk; full-disk encryption status (note, not always feasible on dedicated).
@@ -128,6 +128,8 @@ For each container (`docker ps`, `docker inspect`):
 ```
 
 Every finding: the exact config/port/container, why it's a risk, severity, and the precise remediation command.
+
+References: OpenSSH release notes https://www.openssh.org/releasenotes.html · Docker Engine 29 https://www.docker.com/blog/docker-engine-version-29/ · Ubuntu 26.04 LTS summary https://documentation.ubuntu.com/release-notes/26.04/summary-for-lts-users/
 
 ---
 

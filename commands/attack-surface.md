@@ -31,7 +31,8 @@ For each root domain:
 
 ## PHASE 2: TLS / CERTIFICATE HEALTH
 Per host (`curl -vI https://host` / openssl, or an SSL Labs-style summary):
-- Cert valid, not expired, not self-signed; **days-to-expiry** (warn < 21 days).
+- Cert valid, not expired, not self-signed; **days-to-expiry** — judge against the cert's own lifetime, not a fixed number: warn once less than ~1/3 of the lifetime remains (a 90-day cert with < 30 days left means renewal already failed). Public TLS certs are capped at 200 days since 2026-03-15, 100 days from 2027-03-15, 47 days from 2029-03-15 (CA/B Forum SC-081), and Let's Encrypt moves to 64-day (Feb 2027) then 45-day (Feb 2028) certs — any manually renewed cert is a finding; renewal must be ACME-automated, ideally with ARI.
+- Revocation: Let's Encrypt certs no longer carry an OCSP URL (CRL only, since May 2025) — missing OCSP stapling is not a finding there. LE also stopped issuing the TLS Client Authentication EKU (July 2026), so anything using LE certs for mTLS client auth will fail on renewal.
 - SANs match the host; no wildcard sprawl exposing internal names.
 - Protocols: TLS 1.2/1.3 only (no SSLv3/TLS 1.0/1.1); weak ciphers disabled.
 - HSTS header present with sane `max-age` (+ preload?); redirect HTTP→HTTPS.
@@ -76,7 +77,7 @@ Keep this surgical — a handful of GETs, not a wordlist scan.
 For each sending domain (spoofing your domain is a real brand/phishing risk if you send any mail):
 - **SPF** (`TXT v=spf1`): present, not `+all`, includes your real senders (Google, Resend/SendGrid, etc.), ≤10 lookups.
 - **DKIM**: selectors present and valid for your ESP.
-- **DMARC** (`_dmarc` TXT): present; policy `quarantine`/`reject` (not just `p=none` forever); `rua` reporting set.
+- **DMARC** (`_dmarc` TXT): present; policy `quarantine`/`reject` (not just `p=none` forever); `rua` reporting set. DMARC is now RFC 9989 (May 2026, obsoletes RFC 7489): `pct` is removed (use `t=y` for test mode; old receivers ignore `t` and apply `p`), and the new `np` tag sets policy for non-existent subdomains — recommend `np=reject` to stop spoofing of made-up subdomains.
 - BIMI (optional, brand polish).
 - MX sanity; no open relay.
 
@@ -126,6 +127,8 @@ For each sending domain (spoofing your domain is a real brand/phishing risk if y
 ```
 
 Every finding: the exact host/record/URL, why it matters, severity, and the precise fix (DNS change, header, redirect rule, dashboard action).
+
+References: CA/B Forum SC-081 https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/ · Let's Encrypt https://letsencrypt.org/upcoming-features/ and https://letsencrypt.org/2025/12/02/from-90-to-45 · RFC 9989 https://www.rfc-editor.org/rfc/rfc9989
 
 ---
 

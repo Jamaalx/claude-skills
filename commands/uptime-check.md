@@ -157,7 +157,8 @@ For each domain, use WebFetch to check SSL Labs or similar:
    - Certificate issuer (Let's Encrypt, Cloudflare, DigiCert, etc.)
    - Validity period (not before / not after)
    - Subject Alternative Names (SANs) — what domains does the cert cover?
-   - FLAG if expires within 14 days
+   - FLAG if less than ~1/3 of the cert's lifetime remains (renewal should already have happened), CRITICAL if within 7 days. Don't use a fixed window: public certs are capped at 200 days since 2026-03-15 (100 from 2027-03-15, 47 from 2029-03-15, CA/B Forum SC-081) and Let's Encrypt moves to 64-day (2027-02-10) then 45-day (2028-02-16) certs.
+   - Let's Encrypt no longer sends expiry emails (stopped 2025-06-04) — if nothing else watches cert expiry, that is a finding. (sources: https://cabforum.org/2025/04/11/ballot-sc081v3-introduce-schedule-of-reducing-validity-and-data-reuse-periods/, https://letsencrypt.org/upcoming-features/, https://letsencrypt.org/2025/12/02/from-90-to-45)
 
 2. **TLS configuration** — Use WebSearch for `"[domain] ssl test"` or check:
    - WebFetch the domain and note any TLS errors
@@ -385,9 +386,9 @@ CLOUDFLARE STATUS:
 
    Common services to check (if used):
    - **OpenAI**: WebFetch `https://status.openai.com/api/v2/status.json`
-   - **Stripe**: WebFetch `https://status.stripe.com/api/v2/status.json`
+   - **Stripe**: WebFetch `https://status.stripe.com` (no Statuspage JSON API)
    - **Supabase**: WebFetch `https://status.supabase.com/api/v2/status.json`
-   - **Railway**: WebSearch `"Railway status"` or `https://status.railway.app`
+   - **Railway**: WebFetch `https://status.railway.com` (status.railway.app redirects there)
    - **Cloudflare**: WebFetch `https://www.cloudflarestatus.com/api/v2/status.json`
    - **Vercel**: WebFetch `https://www.vercel-status.com/api/v2/status.json`
    - **GitHub**: WebFetch `https://www.githubstatus.com/api/v2/status.json`
@@ -573,7 +574,7 @@ If there are ANY issues found, create `UPTIME-FIXES.md` in the project root with
 [How to set up email/Discord alerts for downtime]
 
 ### 5. SSL Certificate Monitoring
-[How to monitor cert expiry]
+[How to monitor cert expiry — an external check that alerts at ~1/3 lifetime remaining; CAs like Let's Encrypt no longer email expiry warnings. Prefer ACME clients with ARI (renewal info) so renewals follow the CA's schedule.]
 
 ---
 *This file should be deleted after implementing the fixes.*
